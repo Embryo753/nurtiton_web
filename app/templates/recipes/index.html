@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>我的食譜</h1>
+    
+    <div>
+        <form action="{{ url_for('recipes.create_and_redirect') }}" method="post" style="display: inline;">
+            <input type="submit" value="+ 新增食譜" style="font-size: 1em; background-color: #28a745; color: white; border: none; padding: 5px 10px; cursor: pointer;">
+        </form>
+    </div>
+
+    <hr>
+
+    {% if recipes %}
+        <ul>
+        {% for recipe in recipes %}
+            <li>
+                <a href="{{ url_for('recipes.recipe_detail', recipe_id=recipe.id) }}">{{ recipe.recipe_name }}</a> 
+                (最後修改於: {{ recipe.updated_at.strftime('%Y-%m-%d %H:%M') if recipe.updated_at else recipe.created_at.strftime('%Y-%m-%d %H:%M') }})
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>您目前還沒有建立任何食譜，點擊上方按鈕來新增一個吧！</p>
+    {% endif %}
+
+{% endblock %}

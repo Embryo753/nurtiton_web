@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .main-container { display: flex; flex-direction: row; gap: 20px; }
+    #left-panel { width: 25%; border: 1px solid #ccc; padding: 10px; }
+    #center-panel { width: 50%; border: 1px solid #ccc; padding: 10px; }
+    #right-panel { width: 25%; border: 1px solid #ccc; padding: 10px; }
+    #search-results .result-item { padding: 4px; cursor: pointer; border-bottom: 1px solid #eee; }
+    #search-results .result-item:hover { background-color: #f0f0f0; }
+    #search-results .result-item.active { background-color: #dbeafe; font-weight: bold; }
+    .form-input { width: 95%; margin-bottom: 5px; }
+    .action-btn { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; }
+    .action-btn:disabled { background-color: #ccc; cursor: not-allowed; opacity: 0.6; }
+</style>
+
+<h1>食材管理</h1>
+
+<div class="main-container">
+    <div id="left-panel">
+        <h3>我的自訂食材</h3>
+        <input type="search" id="ingredient-search-box" style="width: 95%; margin-bottom: 10px;" placeholder="搜尋您的食材...">
+        <div id="search-results" style="min-height: 400px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd;"></div>
+    </div>
+
+    <div id="center-panel">
+        <h3 id="form-title">編輯食材資料</h3>
+        <form id="ingredient-form" novalidate onsubmit="return false;">
+            <p><i>請從左側列表選擇一個食材來編輯，或點擊右側的「新增」按鈕。</i></p>
+        </form>
+    </div>
+
+    <div id="right-panel">
+        <h3>操作</h3>
+        <button id="new-btn" class="action-btn">新增食材</button>
+        <button id="save-btn" class="action-btn" disabled>儲存修改</button>
+        <button id="delete-btn" class="action-btn" disabled style="background-color: #d9534f; color: white;">刪除食材</button>
+        <button id="cancel-btn" class="action-btn" style="background-color: #6c757d; color: white;" disabled>取消操作</button>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const formTemplate = `
+        <p>食材名稱:<br><input type="text" id="food_name" name="food_name" class="form-input" required></p>
+        <p>熱量 (大卡/100g):<br><input type="number" id="calories_kcal" name="calories_kcal" class="form-input" value="0" required min="0" step="0.01"></p>
+        <p>蛋白質 (克/100g):<br><input type="number" id="protein_g" name="protein_g" class="form-input" value="0" required min="0" step="0.01"></p>
+        <p>總脂肪 (克/100g):<br><input type="number" id="fat_g" name="fat_g" class="form-input" value="0" required min="0" step="0.01"></p>
+        <p>飽和脂肪 (克/100g):<br><input type="number" id="saturated_fat_g" name="saturated_fat_g" class="form-input" value="0" required min="0" step="0.01"></p>
+        <p>反式脂肪 (克/100g):<br><input type="number" id="trans_fat_g" name="trans_fat_g" class="form-input" value="0" required min="0" step="0.01"></p>
+        <p>總碳水化合物 (克/100g):<br><input type="number" id="carbohydrate_g" name="carbohydrate_g" class="form-input" value="0" required min="0" step="0.01"></p>
+        <p>糖 (克/100g):<br><input type="number" id="sugar_g" name="sugar_g" class="form-input" value="0" required min="0" step="0.01"></p>
+        <p>鈉 (毫克/100g):<br><input type="number" id="sodium_mg" name="sodium_mg" class="form-input" value="0" required min="0" step="0.1"></p>
+    `;
+
+    const searchBox = document.getElementById('ingredient-search-box');
+    const searchResultsDiv = document.getElementById('search-results');
+    const formContainer = document.getElementById('ingredient-form');
+    const formTitle = document.getElementById('form-title');
+    const newButton = document.getElementById('new-btn');
+    const saveButton = document.getElementById('save-btn');
+    const deleteButton = document.getElementById('delete-btn');
+    const cancelButton = document.getElementById('cancel-btn');
+    let currentIngredientId = null;
+
+    function setupFormEventListeners() {
+        const inputs = formContainer.querySelectorAll('input[type="number"]');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                if (this.value === '0') {
+                    this.value = '';
+                }
+            });
+            input.addEventListener('blur', function() {
+                if (this.value === '') {
+                    this.value = '0';
+                }
+            });
+        });
+    }
+
+    function getFormData() {
+        return {
+            food_name: document.getElementById('food_name').value, calories_kcal: document.getElementById('calories_kcal').value,
+            protein_g: document.getElementById('protein_g').value, fat_g: document.getElementById('fat_g').value,
+            saturated_fat_g: document.getElementById('saturated_fat_g').value, trans_fat_g: document.getElementById('trans_fat_g').value,
+            carbohydrate_g: document.getElementById('carbohydrate_g').value, sugar_g: document.getElementById('sugar_g').value,
+            sodium_mg: document.getElementById('sodium_mg').value,
+        };
+    }
+
+    function performSearch() {
+        const query = searchBox.value;
+        fetch(`/recipes/api/search_ingredients?q=${query}&source=USER`).then(response => response.json()).then(data => {
+            searchResultsDiv.innerHTML = '';
+            data.forEach(ingredient => {
+                const itemDiv = document.createElement('div');
+                itemDiv.textContent = ingredient.name;
+                itemDiv.className = 'result-item';
+                itemDiv.setAttribute('data-id', ingredient.id);
+                if (ingredient.id == currentIngredientId) { itemDiv.classList.add('active'); }
+                searchResultsDiv.appendChild(itemDiv);
+            });
+        });
+    }
+
+    function resetToInitialState() {
+        formContainer.innerHTML = '<p><i>請從左側列表選擇一個食材來編輯，或點擊右側的「新增」按鈕。</i></p>';
+        formTitle.textContent = '編輯食材資料';
+        newButton.disabled = false;
+        saveButton.disabled = true;
+        deleteButton.disabled = true;
+        cancelButton.disabled = true;
+        currentIngredientId = null;
+        document.querySelectorAll('.result-item').forEach(el => el.classList.remove('active'));
+    }
+
+    searchResultsDiv.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('result-item')) {
+            const ingredientId = e.target.getAttribute('data-id');
+            fetch(`/recipes/api/ingredient/${ingredientId}`).then(response => response.json()).then(result => {
+                if (result.status === 'success') {
+                    formContainer.innerHTML = formTemplate;
+                    const data = result.data;
+                    currentIngredientId = data.id;
+                    formTitle.textContent = `編輯: ${data.food_name}`;
+                    Object.keys(data).forEach(key => {
+                        const input = document.getElementById(key);
+                        if(input) input.value = data[key];
+                    });
+                    newButton.disabled = false;
+                    saveButton.disabled = false;
+                    deleteButton.disabled = false;
+                    cancelButton.disabled = false;
+                    document.querySelectorAll('.result-item').forEach(el => el.classList.remove('active'));
+                    e.target.classList.add('active');
+                    setupFormEventListeners();
+                }
+            });
+        }
+    });
+
+    newButton.addEventListener('click', function() {
+        formContainer.innerHTML = formTemplate;
+        formTitle.textContent = '新增食材';
+        currentIngredientId = 'new';
+        newButton.disabled = true;
+        saveButton.disabled = false;
+        deleteButton.disabled = true;
+        cancelButton.disabled = false;
+        document.querySelectorAll('.result-item').forEach(el => el.classList.remove('active'));
+        setupFormEventListeners();
+    });
+
+    cancelButton.addEventListener('click', function() {
+        resetToInitialState();
+    });
+
+    saveButton.addEventListener('click', function() {
+        const formData = getFormData();
+        let url;
+        if (currentIngredientId === 'new') {
+            url = `/recipes/api/ingredient/create`;
+        } else {
+            url = `/recipes/api/ingredient/${currentIngredientId}/update`;
+        }
+        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) })
+        .then(response => response.json())
+        .then(result => {
+            alert(result.message);
+            if (result.status === 'success') {
+                performSearch();
+                resetToInitialState();
+            }
+        });
+    });
+
+    deleteButton.addEventListener('click', function() {
+        if (currentIngredientId && currentIngredientId !== 'new' && confirm('您確定要永久刪除這個食材嗎？')) {
+            fetch(`/recipes/api/ingredient/${currentIngredientId}/delete`, { method: 'POST' })
+            .then(response => response.json()).then(result => {
+                alert(result.message);
+                if (result.status === 'success') {
+                    performSearch();
+                    resetToInitialState();
+                }
+            });
+        }
+    });
+
+    searchBox.addEventListener('keyup', performSearch);
+    resetToInitialState();
+    performSearch();
+});
+</script>
+{% endblock %}

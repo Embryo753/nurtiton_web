@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>您好，歡迎來到營養標示與POS系統！</h1>
+    <p>這裡是首頁，請點擊上方的導覽列開始使用。</p>
+    
+    {% if not current_user.is_authenticated %}
+        <p>
+            請先 <a href="{{ url_for('auth.login') }}">登入</a> 或
+            <a href="{{ url_for('auth.register') }}">註冊</a>
+            一個新帳號。
+        </p>
+    {% endif %}
+{% endblock %}

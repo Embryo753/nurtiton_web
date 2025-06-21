@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>編輯食材</h1>
+    <p><a href="{{ url_for('recipes.manage_ingredients') }}">&larr; 返回食材管理列表</a></p>
+
+    <hr>
+    
+    <form action="" method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.food_name.label }}:<br>
+            {{ form.food_name(size=32) }}
+            {% for error in form.food_name.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
+        </p>
+        <p>
+            {{ form.calories_kcal.label }}:<br>
+            {{ form.calories_kcal(size=16) }}
+            {% for error in form.calories_kcal.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
+        </p>
+        <p>
+            {{ form.protein_g.label }}:<br>
+            {{ form.protein_g(size=16) }}
+            {% for error in form.protein_g.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
+        </p>
+        <p>
+            {{ form.fat_g.label }}:<br>
+            {{ form.fat_g(size=16) }}
+            {% for error in form.fat_g.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
+        </p>
+        <p>
+            {{ form.saturated_fat_g.label }}:<br>
+            {{ form.saturated_fat_g(size=16) }}
+            {% for error in form.saturated_fat_g.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
+        </p>
+        <p>
+            {{ form.trans_fat_g.label }}:<br>
+            {{ form.trans_fat_g(size=16) }}
+            {% for error in form.trans_fat_g.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
+        </p>
+        <p>
+            {{ form.carbohydrate_g.label }}:<br>
+            {{ form.carbohydrate_g(size=16) }}
+            {% for error in form.carbohydrate_g.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
+        </p>
+        <p>
+            {{ form.sugar_g.label }}:<br>
+            {{ form.sugar_g(size=16) }}
+            {% for error in form.sugar_g.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
+        </p>
+        <p>
+            {{ form.sodium_mg.label }}:<br>
+            {{ form.sodium_mg(size=16) }}
+            {% for error in form.sodium_mg.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
+        </p>
+        <p><input type="submit" value="更新食材"></p>
+    </form>
+{% endblock %}

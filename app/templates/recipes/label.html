@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>營養標示 - {{ final_texts.product_name }}</title>
+    <style>
+        /* 您的所有 CSS 樣式都保持原樣 */
+        body { font-family: 'Microsoft JhengHei', '微軟正黑體', 'Heiti TC', '黑體-繁', sans-serif; background-color: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding-top: 20px; }
+        @media print { body { background-color: #fff; -webkit-print-color-adjust: exact; } .no-print { display: none; } }
+        .label-wrapper { width: 450px; border: 1px dashed #999; padding: 20px; background-color: #fff; }
+        .label-container { display: flex; flex-direction: row; gap: 20px; font-size: 10pt; line-height: 1.5; }
+        .info-section { flex: 1; }
+        .nutrition-section { flex: 1; }
+        .info-section p, .info-section div { margin: 0 0 5px 0; }
+        strong { font-weight: bold; }
+        .brand-logo { font-size: 18pt; font-weight: bold; text-align: center; margin-bottom: 15px; letter-spacing: 2px; border: 3px double black; padding: 5px; }
+        .nutrition-title { font-weight: bold; font-size: 16pt; text-align: center; margin-bottom: 10px; letter-spacing: 2px; }
+        /* 使用 pre 標籤後，我們不再需要 nutrition-table 的複雜樣式，但予以保留以備不時之需 */
+        .nutrition-table { width: 100%; border-collapse: collapse; border-top: 2px solid black; border-bottom: 2px solid black; }
+        .nutrition-table th, .nutrition-table td { padding: 3px 0; text-align: left; border-bottom: 1px solid black; }
+        .nutrition-table th { font-weight: normal; }
+        .nutrition-table td { text-align: right; }
+        .nutrition-table .header-row th { text-align: right; font-weight: bold; border-bottom: 2px solid black; }
+        .nutrient-name-indent { padding-left: 15px; }
+        .no-border-bottom { border-bottom: none !important; }
+        .footer-notes { font-size: 9pt; margin-top: 10px; }
+        /* NEW: 為 pre 標籤設定樣式，讓它看起來像營養標示 */
+        pre.nutrition-block {
+            font-family: 'Microsoft JhengHei', '微軟正黑體', 'Heiti TC', '黑體-繁', sans-serif;
+            font-size: 10pt;
+            line-height: 1.6;
+            margin: 0;
+            white-space: pre-wrap; /* 自動換行 */
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="margin-bottom: 20px;"><button onclick="window.print();">列印此標籤</button></div>
+    <div class="label-wrapper">
+        <div class="brand-logo">糕點九一</div>
+        <div class="label-container">
+            <div class="info-section">
+                <p><strong>品名：</strong>{{ final_texts.product_name }}</p>
+                <p>{{ final_texts.ingredients }}</p>
+                <p>{{ final_texts.net_weight }}</p>
+                <p><strong>保存方式：</strong>冷凍於-18°C以下</p>
+                <p><strong>保存期限：</strong>冷凍-18°C以下保存30天</p>
+                <p><strong>製造日期：</strong></p>
+                <p><strong>賞味期限：</strong></p>
+                <p><strong>產地：</strong>台灣</p>
+                <hr>
+                <div class="footer-notes">
+                    <p>● <strong>過敏原資訊：</strong>{{ final_texts.allergens }}</p>
+                    <p>● 反式脂肪非人工生成，為乳製品中天然存在。</p>
+                    <p>● 本產品已投保南山產物產品責任險1,000萬。</p>
+                </div>
+            </div>
+            <div class="nutrition-section">
+                <div class="nutrition-title">營養標示</div>
+                <div class="label-section">
+                    <pre class="nutrition-block">{{ final_texts.nutrition }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
