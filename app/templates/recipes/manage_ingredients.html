@@ -1,3 +1,5 @@
+{# app/templates/recipes/manage_ingredients.html #}
+
 {% extends "base.html" %}
 
 {% block content %}
@@ -43,6 +45,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     const formTemplate = `
         <p>食材名稱:<br><input type="text" id="food_name" name="food_name" class="form-input" required></p>
+        <p>成本 (每100g):<br><input type="number" id="cost_per_unit" name="cost_per_unit" class="form-input" value="0" required min="0" step="0.01"></p> {# 新增 #}
+        <p>單位名稱:<br><input type="text" id="unit_name" name="unit_name" class="form-input" value="g" required></p> {# 新增 #}
         <p>熱量 (大卡/100g):<br><input type="number" id="calories_kcal" name="calories_kcal" class="form-input" value="0" required min="0" step="0.01"></p>
         <p>蛋白質 (克/100g):<br><input type="number" id="protein_g" name="protein_g" class="form-input" value="0" required min="0" step="0.01"></p>
         <p>總脂肪 (克/100g):<br><input type="number" id="fat_g" name="fat_g" class="form-input" value="0" required min="0" step="0.01"></p>
@@ -81,7 +85,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function getFormData() {
         return {
-            food_name: document.getElementById('food_name').value, calories_kcal: document.getElementById('calories_kcal').value,
+            food_name: document.getElementById('food_name').value,
+            cost_per_unit: document.getElementById('cost_per_unit').value, {# 新增 #}
+            unit_name: document.getElementById('unit_name').value, {# 新增 #}
+            calories_kcal: document.getElementById('calories_kcal').value,
             protein_g: document.getElementById('protein_g').value, fat_g: document.getElementById('fat_g').value,
             saturated_fat_g: document.getElementById('saturated_fat_g').value, trans_fat_g: document.getElementById('trans_fat_g').value,
             carbohydrate_g: document.getElementById('carbohydrate_g').value, sugar_g: document.getElementById('sugar_g').value,
@@ -193,4 +200,3 @@ document.addEventListener('DOMContentLoaded', function() {
     performSearch();
 });
 </script>
-{% endblock %}

@@ -23,6 +23,9 @@
       {% if current_user.is_authenticated %}
         <a href="{{ url_for('recipes.index') }}">我的食譜</a>
         <a href="{{ url_for('recipes.manage_ingredients') }}">食材管理</a> <span style="margin: 0 10px;">|</span>
+        {# 新增產品管理連結 #}
+        <a href="{{ url_for('products.index') }}">產品管理</a>
+        <span style="margin: 0 10px;">|</span>
         <span>您好, {{ current_user.username }}!</span>
         <a href="{{ url_for('auth.logout') }}">登出</a>
       {% else %}

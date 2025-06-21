@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>產品管理</h1>
+
+    <p>在這裡您可以管理您的產品。產品是基於您的食譜創建的。</p>
+
+    {# 檢查是否有產品可以顯示 #}
+    {% if products %}
+        <table border="1" cellpadding="5" style="width:100%;">
+            <thead>
+                <tr>
+                    <th>產品名稱</th>
+                    <th>關聯食譜</th>
+                    <th>成本 (NT$)</th>
+                    <th>售價 (NT$)</th>
+                    <th>毛利率 (%)</th>
+                    <th>庫存</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>{{ product.product_name }}</td>
+                    {# 連結到食譜詳細頁面 #}
+                    <td><a href="{{ url_for('recipes.recipe_detail', recipe_id=product.recipe.id) }}">{{ product.recipe.recipe_name }}</a></td>
+                    <td>{{ product.calculated_cost | round(2) }}</td> {# 顯示計算出的成本，四捨五入到小數點後兩位 #}
+                    <td>{{ product.selling_price | round(2) }}</td> {# 顯示售價，四捨五入到小數點後兩位 #}
+                    <td>{{ product.calculate_profit_margin() | round(2) }}%</td> {# 顯示毛利率，四捨五入到小數點後兩位 #}
+                    <td>{{ product.stock_quantity }}</td>
+                    <td>
+                        <a href="{{ url_for('products.edit_product', product_id=product.id) }}">編輯</a>
+                        {# 刪除產品的表單，包含確認提示 #}
+                        <form action="{{ url_for('products.delete_product', product_id=product.id) }}" method="post" onsubmit="return confirm('確定要刪除產品 {{ product.product_name }} 嗎？');" style="display:inline;">
+                            <input type="submit" value="刪除" style="background: none; border: none; color: red; cursor: pointer; text-decoration: underline;">
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>您目前還沒有建立任何產品。請先在<a href="{{ url_for('recipes.index') }}">「我的食譜」</a>中編輯一個食譜，然後從該食譜創建一個產品。</p>
+    {% endif %}
+
+{% endblock %}

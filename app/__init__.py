@@ -28,6 +28,10 @@ def create_app(config_class=Config):
     from app.recipes import bp as recipes_bp
     app.register_blueprint(recipes_bp, url_prefix='/recipes')
 
+# 新增產品藍圖
+    from app.products import bp as products_bp #
+    app.register_blueprint(products_bp, url_prefix='/products') #
+
     return app
 
 # --- 確認這行在檔案的最底部 ---

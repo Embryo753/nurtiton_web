@@ -14,6 +14,8 @@ class IngredientForm(FlaskForm):
         csrf = False
 
     food_name = StringField('食材名稱', validators=[DataRequired(), Length(min=1, max=128)])
+    cost_per_unit = FloatField('成本 (每100g)', validators=[InputRequired(message="此欄位不可空白"), NumberRange(min=0)], default=0) # 新增
+    unit_name = StringField('單位名稱', validators=[DataRequired(), Length(min=1, max=16)], default='g') # 新增
     calories_kcal = FloatField('熱量 (大卡/100g)', validators=[InputRequired(message="此欄位不可空白"), NumberRange(min=0)])
     protein_g = FloatField('蛋白質 (克/100g)', validators=[InputRequired(message="此欄位不可空白"), NumberRange(min=0)])
     fat_g = FloatField('總脂肪 (克/100g)', validators=[InputRequired(message="此欄位不可空白"), NumberRange(min=0)])

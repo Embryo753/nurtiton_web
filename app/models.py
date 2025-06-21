@@ -35,8 +35,8 @@ class Ingredient(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     creator = db.relationship('User', back_populates='ingredients')
     tfda_id = db.Column(db.String(64), unique=True, nullable=True, index=True)
-    cost_per_unit = db.Column(db.Float, nullable=False, default=0)
-    unit_name = db.Column(db.String(16), default='g')
+    cost_per_unit = db.Column(db.Float, nullable=False, default=0) # 每個單位（例如100g）的成本
+    unit_name = db.Column(db.String(16), default='g') # 成本計算的單位，例如 'g', 'ml', '個', '片'
     calories_kcal = db.Column(db.Float, default=0)
     protein_g = db.Column(db.Float, default=0)
     fat_g = db.Column(db.Float, default=0)
@@ -56,13 +56,17 @@ class Recipe(db.Model):
     serving_weight_g = db.Column(db.Float, default=100.0)
     final_weight_g = db.Column(db.Float, nullable=True)
     servings_count = db.Column(db.Integer, default=1)
-    label_options = db.Column(db.JSON) # <-- 新增此欄位
+    label_options = db.Column(db.JSON)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     author = db.relationship('User', back_populates='recipes')
     ingredients = db.relationship('RecipeItem', back_populates='recipe', cascade="all, delete-orphan")
     def __repr__(self): return f'<Recipe {self.recipe_name}>'
     def calculate_nutrition(self):
-        totals = {'calories_kcal': 0, 'protein_g': 0, 'fat_g': 0, 'carbohydrate_g': 0, 'saturated_fat_g': 0, 'trans_fat_g': 0, 'sugar_g': 0, 'sodium_mg': 0, 'total_weight_g': 0}
+        totals = {
+            'calories_kcal': 0, 'protein_g': 0, 'fat_g': 0, 'carbohydrate_g': 0,
+            'saturated_fat_g': 0, 'trans_fat_g': 0, 'sugar_g': 0, 'sodium_mg': 0,
+            'total_weight_g': 0, 'total_cost': 0 # 新增 total_cost
+        }
         if not self.ingredients: return totals
         for item in self.ingredients:
             scale = item.quantity_g / 100.0
@@ -75,6 +79,9 @@ class Recipe(db.Model):
             totals['sugar_g'] += item.ingredient.sugar_g * scale
             totals['sodium_mg'] += item.ingredient.sodium_mg * scale
             totals['total_weight_g'] += item.quantity_g
+            # 成本計算： 食譜項目重量(g) / 100g * 每100g成本
+            # 這裡假設 cost_per_unit 是每 100g 的成本
+            totals['total_cost'] += (item.ingredient.cost_per_unit / 100.0) * item.quantity_g #
         return totals
 
 class RecipeItem(db.Model):
@@ -94,14 +101,19 @@ class Product(db.Model):
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
     updated_at = db.Column(db.DateTime(timezone=True), onupdate=func.now())
-    calculated_cost = db.Column(db.Float, default=0)
-    selling_price = db.Column(db.Float, default=0)
-    stock_quantity = db.Column(db.Integer, default=0)
+    calculated_cost = db.Column(db.Float, default=0) # 計算出的產品成本
+    selling_price = db.Column(db.Float, default=0) # 產品售價
+    stock_quantity = db.Column(db.Integer, default=0) # 庫存數量
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id'), nullable=False)
     creator = db.relationship('User', back_populates='products')
     recipe = db.relationship('Recipe')
     def __repr__(self): return f'<Product {self.product_name}>'
+    def calculate_profit_margin(self):
+        # 計算毛利率 (Selling Price - Cost) / Selling Price
+        if self.selling_price and self.selling_price > 0:
+            return ((self.selling_price - self.calculated_cost) / self.selling_price) * 100
+        return 0
 
 class Customer(db.Model):
     __tablename__ = 'customers'
@@ -135,3 +147,4 @@ class OrderItem(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     product = db.relationship('Product')
     def __repr__(self): return f'<OrderItem order:{self.order_id} product:{self.product_id} qty:{self.quantity}>'
+

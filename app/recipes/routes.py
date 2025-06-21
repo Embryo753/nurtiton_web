@@ -38,19 +38,20 @@ def recipe_detail(recipe_id):
     }
     for item in recipe.ingredients:
         initial_state['ingredients'].append({
-            'ingredient_id': item.ingredient.id, 'ingredient_name': item.ingredient.food_name, 'quantity_g': item.quantity_g,
+            'ingredient_id': item.ingredient.id,
+            'ingredient_name': item.ingredient.food_name,
+            'quantity_g': item.quantity_g,
             'details': {
                 'calories_kcal': item.ingredient.calories_kcal, 'protein_g': item.ingredient.protein_g,
                 'fat_g': item.ingredient.fat_g, 'carbohydrate_g': item.ingredient.carbohydrate_g,
                 'saturated_fat_g': item.ingredient.saturated_fat_g, 'trans_fat_g': item.ingredient.trans_fat_g,
-                'sugar_g': item.ingredient.sugar_g, 'sodium_mg': item.ingredient.sodium_mg
+                'sugar_g': item.ingredient.sugar_g, 'sodium_mg': item.ingredient.sodium_mg,
+                'cost_per_unit': item.ingredient.cost_per_unit, # 新增
+                'unit_name': item.ingredient.unit_name # 新增
             }
         })
     return render_template('recipes/recipe_detail.html', title=f"編輯食譜: {recipe.recipe_name}", recipe=recipe, initial_state=initial_state)
 
-# =====================================================================
-# VVVVVV 這是唯一被修改的函式 VVVVVV
-# =====================================================================
 @bp.route('/<int:recipe_id>/label', methods=['GET', 'POST'])
 @login_required
 def recipe_label(recipe_id):
@@ -70,7 +71,7 @@ def recipe_label(recipe_id):
         # 使用這些已編輯的文字來渲染最終的標籤頁面
         return render_template(
             'recipes/label.html',
-            recipe=recipe,
+            recipe=recipe, # 傳遞 recipe 物件，以便 template 可以訪問 recipe.recipe_name 等資訊
             final_texts=final_texts
         )
     
@@ -84,31 +85,49 @@ def recipe_label(recipe_id):
         density = {}
         if final_weight > 0:
             for key, value in raw_totals.items():
-                if isinstance(value, (int, float)):
+                if isinstance(value, (int, float)) and key != 'total_cost': # 排除 total_cost，它不是用於密度計算的營養素
                     density[key] = value / final_weight
         
         per_serving = {key: val * serving_weight for key, val in density.items()}
         per_100g = {key: val * 100 for key, val in density.items()}
         
         ingredients_list_sorted = sorted(recipe.ingredients, key=lambda item: item.quantity_g, reverse=True)
-        ingredients_str = "成分：" + "、".join([item.ingredient.food_name for item in ingredients_list_sorted])
+        ingredients_str = "、".join([item.ingredient.food_name for item in ingredients_list_sorted])
 
+        # 根據 label_options 篩選營養素並格式化
+        label_options = recipe.label_options or {}
+        show_options = label_options.get('show_nutrients', {
+            'calories_kcal': True, 'protein_g': True, 'fat_g': True,
+            'saturated_fat_g': True, 'trans_fat_g': True, 'carbohydrate_g': True,
+            'sugar_g': True, 'sodium_mg': True
+        })
+
+        nutrition_lines = []
+        if show_options.get('calories_kcal', True):
+            nutrition_lines.append(f"熱量          {per_serving.get('calories_kcal', 0):>7.1f} 大卡 {per_100g.get('calories_kcal', 0):>9.1f} 大卡")
+        if show_options.get('protein_g', True):
+            nutrition_lines.append(f"蛋白質        {per_serving.get('protein_g', 0):>7.1f} 公克 {per_100g.get('protein_g', 0):>9.1f} 公克")
+        if show_options.get('fat_g', True):
+            nutrition_lines.append(f"脂肪          {per_serving.get('fat_g', 0):>7.1f} 公克 {per_100g.get('fat_g', 0):>9.1f} 公克")
+        if show_options.get('saturated_fat_g', True):
+            nutrition_lines.append(f"  飽和脂肪    {per_serving.get('saturated_fat_g', 0):>7.1f} 公克 {per_100g.get('saturated_fat_g', 0):>9.1f} 公克")
+        if show_options.get('trans_fat_g', True):
+            nutrition_lines.append(f"  反式脂肪    {per_serving.get('trans_fat_g', 0):>7.1f} 公克 {per_100g.get('trans_fat_g', 0):>9.1f} 公克")
+        if show_options.get('carbohydrate_g', True):
+            nutrition_lines.append(f"碳水化合物    {per_serving.get('carbohydrate_g', 0):>7.1f} 公克 {per_100g.get('carbohydrate_g', 0):>9.1f} 公克")
+        if show_options.get('sugar_g', True):
+            nutrition_lines.append(f"  糖          {per_serving.get('sugar_g', 0):>7.1f} 公克 {per_100g.get('sugar_g', 0):>9.1f} 公克")
+        if show_options.get('sodium_mg', True):
+            nutrition_lines.append(f"鈉            {per_serving.get('sodium_mg', 0):>7.1f} 毫克 {per_100g.get('sodium_mg', 0):>9.1f} 毫克")
+        
         nutrition_str = (
             f"--- 每份 {serving_weight:.1f} 公克 ---\n"
             f"本包裝含 {servings_count} 份\n"
             f"\n"
-            f"                      每份      每100公克\n"
-            f"熱量        {per_serving.get('calories_kcal', 0):>7.1f} 大卡 {per_100g.get('calories_kcal', 0):>9.1f} 大卡\n"
-            f"蛋白質      {per_serving.get('protein_g', 0):>7.1f} 公克 {per_100g.get('protein_g', 0):>9.1f} 公克\n"
-            f"脂肪        {per_serving.get('fat_g', 0):>7.1f} 公克 {per_100g.get('fat_g', 0):>9.1f} 公克\n"
-            f"  飽和脂肪  {per_serving.get('saturated_fat_g', 0):>7.1f} 公克 {per_100g.get('saturated_fat_g', 0):>9.1f} 公克\n"
-            f"  反式脂肪  {per_serving.get('trans_fat_g', 0):>7.1f} 公克 {per_100g.get('trans_fat_g', 0):>9.1f} 公克\n"
-            f"碳水化合物  {per_serving.get('carbohydrate_g', 0):>7.1f} 公克 {per_100g.get('carbohydrate_g', 0):>9.1f} 公克\n"
-            f"  糖        {per_serving.get('sugar_g', 0):>7.1f} 公克 {per_100g.get('sugar_g', 0):>9.1f} 公克\n"
-            f"鈉          {per_serving.get('sodium_mg', 0):>7.1f} 毫克 {per_100g.get('sodium_mg', 0):>9.1f} 毫克"
+            f"              每份      每100公克\n" +
+            "\n".join(nutrition_lines)
         )
         
-        label_options = recipe.label_options or {}
         allergens = label_options.get('allergens', [])
         allergen_text = ""
         if allergens:
@@ -116,22 +135,18 @@ def recipe_label(recipe_id):
 
         # 為了讓模板能統一處理，這裡也建立一個同結構的字典
         final_texts = {
-             'product_name': recipe.recipe_name,
-             'ingredients': ingredients_str,
-             'net_weight': f"淨重：{final_weight:.1f} 公克",
-             'nutrition': nutrition_str,
-             'allergens': allergen_text
+            'product_name': recipe.recipe_name,
+            'ingredients': ingredients_str,
+            'net_weight': f"淨重：{final_weight:.1f} 公克",
+            'nutrition': nutrition_str,
+            'allergens': allergen_text
         }
 
         return render_template(
             'recipes/label.html',
             recipe=recipe,
-            final_texts=final_texts
+            final_texts=final_texts # 傳遞整合後的 final_texts
         )
-# =====================================================================
-# ^^^^^^ 以上是唯一被修改的函式，以下所有函式都與您最初的版本相同 ^^^^^^
-# =====================================================================
-
 
 @bp.route('/ingredients', methods=['GET'])
 @login_required
@@ -143,7 +158,15 @@ def manage_ingredients():
 def get_ingredient(ingredient_id):
     ingredient = Ingredient.query.get_or_404(ingredient_id)
     if ingredient.creator != current_user: return jsonify({'status': 'error', 'message': '權限不足'}), 403
-    ingredient_data = {'id': ingredient.id, 'food_name': ingredient.food_name, 'calories_kcal': ingredient.calories_kcal, 'protein_g': ingredient.protein_g, 'fat_g': ingredient.fat_g, 'saturated_fat_g': ingredient.saturated_fat_g, 'trans_fat_g': ingredient.trans_fat_g, 'carbohydrate_g': ingredient.carbohydrate_g, 'sugar_g': ingredient.sugar_g, 'sodium_mg': ingredient.sodium_mg}
+    ingredient_data = {
+        'id': ingredient.id, 'food_name': ingredient.food_name,
+        'calories_kcal': ingredient.calories_kcal, 'protein_g': ingredient.protein_g,
+        'fat_g': ingredient.fat_g, 'saturated_fat_g': ingredient.saturated_fat_g,
+        'trans_fat_g': ingredient.trans_fat_g, 'carbohydrate_g': ingredient.carbohydrate_g,
+        'sugar_g': ingredient.sugar_g, 'sodium_mg': ingredient.sodium_mg,
+        'cost_per_unit': ingredient.cost_per_unit, # 新增
+        'unit_name': ingredient.unit_name # 新增
+    }
     return jsonify({'status': 'success', 'data': ingredient_data})
 
 @bp.route('/api/ingredient/create', methods=['POST'])
@@ -205,7 +228,14 @@ def search_ingredients():
         search = f"%{query}%"
         base_query = base_query.filter(Ingredient.food_name.like(search))
     ingredients = base_query.order_by(Ingredient.food_name).limit(20).all()
-    results = [{'id': ing.id, 'name': ing.food_name, 'calories_kcal': ing.calories_kcal, 'protein_g': ing.protein_g, 'fat_g': ing.fat_g, 'carbohydrate_g': ing.carbohydrate_g, 'saturated_fat_g': ing.saturated_fat_g, 'trans_fat_g': ing.trans_fat_g, 'sugar_g': ing.sugar_g, 'sodium_mg': ing.sodium_mg } for ing in ingredients]
+    results = [{'id': ing.id, 'name': ing.food_name,
+                'calories_kcal': ing.calories_kcal, 'protein_g': ing.protein_g,
+                'fat_g': ing.fat_g, 'carbohydrate_g': ing.carbohydrate_g,
+                'saturated_fat_g': ing.saturated_fat_g, 'trans_fat_g': ing.trans_fat_g,
+                'sugar_g': ing.sugar_g, 'sodium_mg': ing.sodium_mg,
+                'cost_per_unit': ing.cost_per_unit, # 新增
+                'unit_name': ing.unit_name # 新增
+                } for ing in ingredients]
     return jsonify(results)
 
 @bp.route('/api/recipe/<int:recipe_id>/save', methods=['POST'])
@@ -243,21 +273,31 @@ def preview_label():
 
     try:
         # 1. 在記憶體中建立一個暫時的 Recipe 物件來存放前端資料
+        # 這裡我們需要一個類似 Recipe 的物件，但是是輕量的，不寫入db
+        # 或者，我們可以從前端直接傳遞 ingredient 的完整 details
+        # 這裡的實現方式是，RecipeItem 需要 Ingredient 對象。
+        # 所以需要從資料庫中撈取 Ingredient 對象
+        
+        # 為了避免不必要的資料庫操作，可以將 ingredient details 直接傳遞過來
+        # 或者像現在這樣，重新從資料庫加載
         temp_recipe = Recipe(
             recipe_name=data.get('recipe_name', '預覽食譜'),
             final_weight_g=float(data['final_weight_g']) if data.get('final_weight_g') else None,
             servings_count=int(data.get('servings_count', 1)),
             label_options=data.get('label_options', {})
         )
-
-        # 2. 建立暫時的 RecipeItem 物件列表
+        
+        # 因為 temp_recipe 是一個不在 session 的 transient object，
+        # 它的 `ingredients` 關係需要手動填充，且其中的 `ingredient` 屬性也需要是實際的 Ingredient 對象
+        # 而不是僅僅 ID
         for item_data in data.get('ingredients', []):
             ingredient = Ingredient.query.get(item_data['ingredient_id'])
             if ingredient and float(item_data['quantity_g']) > 0:
-                # 將暫時的 RecipeItem 加入暫時的 Recipe 中
-                temp_recipe.ingredients.append(
-                    RecipeItem(ingredient=ingredient, quantity_g=float(item_data['quantity_g']))
-                )
+                # 注意：RecipeItem 關係建立時需要正確的對象，而不是僅僅 ID
+                # 如果 RecipeItem 有一個 setter 可以接受 ID 則更簡單
+                # 這裡直接傳入 ingredient 對象
+                temp_recipe_item = RecipeItem(ingredient=ingredient, quantity_g=float(item_data['quantity_g']))
+                temp_recipe.ingredients.append(temp_recipe_item)
 
         # 3. 呼叫您在模型中已有的計算方法，重複利用現有邏輯！
         raw_totals = temp_recipe.calculate_nutrition()
@@ -270,7 +310,7 @@ def preview_label():
         density = {}
         if final_weight > 0:
             for key, value in raw_totals.items():
-                if isinstance(value, (int, float)):
+                if isinstance(value, (int, float)) and key != 'total_cost': # 排除 total_cost
                     density[key] = value / final_weight
         
         per_serving = {key: val * serving_weight for key, val in density.items()}
@@ -280,33 +320,52 @@ def preview_label():
         ingredients_list_sorted = sorted(temp_recipe.ingredients, key=lambda item: item.quantity_g, reverse=True)
         ingredients_str = "、".join([item.ingredient.food_name for item in ingredients_list_sorted])
 
-        # 您可以自由修改此處的文字排版格式
+        # 根據 label_options 篩選營養素並格式化
+        label_options = temp_recipe.label_options or {}
+        show_options = label_options.get('show_nutrients', {
+            'calories_kcal': True, 'protein_g': True, 'fat_g': True,
+            'saturated_fat_g': True, 'trans_fat_g': True, 'carbohydrate_g': True,
+            'sugar_g': True, 'sodium_mg': True
+        })
+
+        nutrition_lines = []
+        if show_options.get('calories_kcal', True):
+            nutrition_lines.append(f"熱量          {per_serving.get('calories_kcal', 0):>7.1f} 大卡 {per_100g.get('calories_kcal', 0):>9.1f} 大卡")
+        if show_options.get('protein_g', True):
+            nutrition_lines.append(f"蛋白質        {per_serving.get('protein_g', 0):>7.1f} 公克 {per_100g.get('protein_g', 0):>9.1f} 公克")
+        if show_options.get('fat_g', True):
+            nutrition_lines.append(f"脂肪          {per_serving.get('fat_g', 0):>7.1f} 公克 {per_100g.get('fat_g', 0):>9.1f} 公克")
+        if show_options.get('saturated_fat_g', True):
+            nutrition_lines.append(f"  飽和脂肪    {per_serving.get('saturated_fat_g', 0):>7.1f} 公克 {per_100g.get('saturated_fat_g', 0):>9.1f} 公克")
+        if show_options.get('trans_fat_g', True):
+            nutrition_lines.append(f"  反式脂肪    {per_serving.get('trans_fat_g', 0):>7.1f} 公克 {per_100g.get('trans_fat_g', 0):>9.1f} 公克")
+        if show_options.get('carbohydrate_g', True):
+            nutrition_lines.append(f"碳水化合物    {per_serving.get('carbohydrate_g', 0):>7.1f} 公克 {per_100g.get('carbohydrate_g', 0):>9.1f} 公克")
+        if show_options.get('sugar_g', True):
+            nutrition_lines.append(f"  糖          {per_serving.get('sugar_g', 0):>7.1f} 公克 {per_100g.get('sugar_g', 0):>9.1f} 公克")
+        if show_options.get('sodium_mg', True):
+            nutrition_lines.append(f"鈉            {per_serving.get('sodium_mg', 0):>7.1f} 毫克 {per_100g.get('sodium_mg', 0):>9.1f} 毫克")
+        
         nutrition_str = (
             f"--- 每份 {serving_weight:.1f} 公克 ---\n"
             f"本包裝含 {servings_count} 份\n"
             f"\n"
-            f"                      每份      每100公克\n"
-            f"熱量        {per_serving.get('calories_kcal', 0):>7.1f} 大卡 {per_100g.get('calories_kcal', 0):>9.1f} 大卡\n"
-            f"蛋白質      {per_serving.get('protein_g', 0):>7.1f} 公克 {per_100g.get('protein_g', 0):>9.1f} 公克\n"
-            f"脂肪        {per_serving.get('fat_g', 0):>7.1f} 公克 {per_100g.get('fat_g', 0):>9.1f} 公克\n"
-            f"  飽和脂肪  {per_serving.get('saturated_fat_g', 0):>7.1f} 公克 {per_100g.get('saturated_fat_g', 0):>9.1f} 公克\n"
-            f"  反式脂肪  {per_serving.get('trans_fat_g', 0):>7.1f} 公克 {per_100g.get('trans_fat_g', 0):>9.1f} 公克\n"
-            f"碳水化合物  {per_serving.get('carbohydrate_g', 0):>7.1f} 公克 {per_100g.get('carbohydrate_g', 0):>9.1f} 公克\n"
-            f"  糖        {per_serving.get('sugar_g', 0):>7.1f} 公克 {per_100g.get('sugar_g', 0):>9.1f} 公克\n"
-            f"鈉          {per_serving.get('sodium_mg', 0):>7.1f} 毫克 {per_100g.get('sodium_mg', 0):>9.1f} 毫克"
+            f"              每份      每100公克\n" +
+            "\n".join(nutrition_lines)
         )
         
-        # 這裡您可以加入更複雜的過敏原邏輯
-        allergens_str = "過敏原資訊：本產品含有牛奶、蛋及其製品。"
+        allergens = label_options.get('allergens', [])
+        allergen_text = ""
+        if allergens:
+            allergen_text = "本產品含有" + "、".join(allergens) + "及其製品，不適合對其過敏體質者食用。"
 
-        # 6. 將結果包裝成 JSON 回傳給前端
         return jsonify({
             'status': 'success',
             'product_name': temp_recipe.recipe_name,
             'ingredients': "成分：" + ingredients_str,
             'net_weight': f"淨重：{final_weight:.1f} 公克",
             'nutrition': nutrition_str,
-            'allergens': allergens_str
+            'allergens': allergen_text
         })
 
     except Exception as e:
