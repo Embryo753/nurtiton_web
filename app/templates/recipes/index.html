@@ -1,27 +1,39 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>我的食譜</h1>
-    
-    <div>
-        <form action="{{ url_for('recipes.create_and_redirect') }}" method="post" style="display: inline;">
-            <input type="submit" value="+ 新增食譜" style="font-size: 1em; background-color: #28a745; color: white; border: none; padding: 5px 10px; cursor: pointer;">
+<div class="container mt-4"> <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>{{ title }}</h1>
+        <form action="{{ url_for('recipes.create_and_redirect') }}" method="POST">
+             <button type="submit" class="btn btn-success btn-lg">+ 新增食譜</button>
         </form>
     </div>
 
-    <hr>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-info" role="alert">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
 
     {% if recipes %}
-        <ul>
-        {% for recipe in recipes %}
-            <li>
-                <a href="{{ url_for('recipes.recipe_detail', recipe_id=recipe.id) }}">{{ recipe.recipe_name }}</a> 
-                (最後修改於: {{ recipe.updated_at.strftime('%Y-%m-%d %H:%M') if recipe.updated_at else recipe.created_at.strftime('%Y-%m-%d %H:%M') }})
-            </li>
-        {% endfor %}
-        </ul>
+        <div class="list-group">
+            {% for recipe in recipes %}
+            <a href="{{ url_for('recipes.recipe_detail', recipe_id=recipe.id) }}" class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{ recipe.recipe_name }}</h5>
+                    <small class="text-muted">最後修改於: {{ recipe.updated_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                </div>
+                </a>
+            {% endfor %}
+        </div>
     {% else %}
-        <p>您目前還沒有建立任何食譜，點擊上方按鈕來新增一個吧！</p>
+        <div class="alert alert-secondary mt-4">
+            您目前沒有任何食譜。點擊右上角的「新增食譜」來建立您的第一個食譜吧！
+        </div>
     {% endif %}
 
+</div>
 {% endblock %}

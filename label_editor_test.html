@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>標籤編輯器 - 概念驗證</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background-color: #f0f0f0;
+        }
+        /* 這個是我們的「貼紙畫布」 */
+        .label-canvas {
+            width: 450px;
+            height: 300px;
+            border: 2px dashed #999;
+            background-color: white;
+            touch-action: none; /* 為了在觸控螢幕上能正常運作 */
+            position: relative; /* 關鍵！讓內部的絕對定位元素相對於它 */
+            box-sizing: border-box;
+        }
+        /* 這是可以拖動和縮放的文字方塊 */
+        .text-box {
+            position: absolute; /* 關鍵！讓它可以被自由移動 */
+            width: 150px;
+            padding: 10px;
+            background-color: rgba(66, 133, 244, 0.7); /* 半透明藍色 */
+            color: white;
+            border: 1px solid #fff;
+            border-radius: 5px;
+            cursor: move; /* 讓滑鼠游標變成移動的樣子 */
+            box-sizing: border-box;
+            /* 預設位置 */
+            top: 20px;
+            left: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>標籤編輯器 - 概念驗證</h1>
+    <p>請嘗試拖動下方的藍色方塊，或拉動它的右下角來改變大小。</p>
+
+    <div class="label-canvas">
+        <div id="draggable-box" class="text-box">
+            可拖動的文字
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+
+    <script>
+        // 目標元素就是我們的藍色方塊
+        const element = document.getElementById('draggable-box');
+
+        // 初始化 Interact.js
+        interact(element)
+            // 啟用拖動功能
+            .draggable({
+                listeners: {
+                    // 每次拖動時都會觸發的事件
+                    move(event) {
+                        // 獲取目前的位置 (如果沒有就設為 0)
+                        const x = (parseFloat(event.target.getAttribute('data-x')) || 0) + event.dx;
+                        const y = (parseFloat(event.target.getAttribute('data-y')) || 0) + event.dy;
+
+                        // 更新元素的位置
+                        event.target.style.transform = `translate(${x}px, ${y}px)`;
+
+                        // 將新位置存回 data-* 屬性中，以便下次移動時讀取
+                        event.target.setAttribute('data-x', x);
+                        event.target.setAttribute('data-y', y);
+                    }
+                },
+                inertia: true, // 增加慣性效果，讓拖動更自然
+                modifiers: [ // 限制器，讓元素不能被拖出父容器 (畫布)
+                    interact.modifiers.restrictRect({
+                        restriction: 'parent'
+                    })
+                ]
+            })
+            // 啟用縮放功能
+            .resizable({
+                edges: { left: true, right: true, bottom: true, top: true }, // 可以從四邊和四角縮放
+                listeners: {
+                    move(event) {
+                        let x = (parseFloat(event.target.getAttribute('data-x')) || 0);
+                        let y = (parseFloat(event.target.getAttribute('data-y')) || 0);
+
+                        // 更新元素的尺寸
+                        event.target.style.width = event.rect.width + 'px';
+                        event.target.style.height = event.rect.height + 'px';
+
+                        // 因為縮放時左上角位置可能會變，需要同時更新位移
+                        x += event.deltaRect.left;
+                        y += event.deltaRect.top;
+
+                        event.target.style.transform = `translate(${x}px, ${y}px)`;
+
+                        // 將新位置和尺寸存回
+                        event.target.setAttribute('data-x', x);
+                        event.target.setAttribute('data-y', y);
+                    }
+                },
+                modifiers: [ // 限制器，讓元素不能被縮得太小，或超出父容器
+                    interact.modifiers.restrictRect({
+                        restriction: 'parent'
+                    }),
+                    interact.modifiers.restrictSize({
+                        min: { width: 100, height: 50 }
+                    })
+                ],
+                inertia: true
+            });
+    </script>
+</body>
+</html>
