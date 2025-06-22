@@ -1,9 +1,12 @@
+# app/models.py
 # --- 100% 完整程式碼 ---
 from datetime import datetime, timezone
 from app import db, login
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from sqlalchemy.sql import func
+import json
+from sqlalchemy import desc
 
 @login.user_loader
 def load_user(id):
@@ -21,6 +24,7 @@ class User(UserMixin, db.Model):
     products = db.relationship('Product', back_populates='creator', lazy='dynamic')
     ingredients = db.relationship('Ingredient', back_populates='creator', lazy='dynamic')
     orders = db.relationship('Order', back_populates='staff', lazy='dynamic')
+    ingredient_prices = db.relationship('IngredientPrice', back_populates='user', lazy='dynamic')
     def set_password(self, password): self.password_hash = generate_password_hash(password)
     def check_password(self, password): return check_password_hash(self.password_hash, password)
     def __repr__(self): return f'<User {self.username}>'
@@ -35,8 +39,9 @@ class Ingredient(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     creator = db.relationship('User', back_populates='ingredients')
     tfda_id = db.Column(db.String(64), unique=True, nullable=True, index=True)
-    cost_per_unit = db.Column(db.Float, nullable=False, default=0) # 每個單位（例如100g）的成本
-    unit_name = db.Column(db.String(16), default='g') # 成本計算的單位，例如 'g', 'ml', '個', '片'
+    cost_per_unit = db.Column(db.Float, nullable=False, default=0)
+    unit_name = db.Column(db.String(16), default='g')
+    prices = db.relationship('IngredientPrice', back_populates='ingredient', lazy='dynamic', cascade="all, delete-orphan")
     calories_kcal = db.Column(db.Float, default=0)
     protein_g = db.Column(db.Float, default=0)
     fat_g = db.Column(db.Float, default=0)
@@ -46,6 +51,39 @@ class Ingredient(db.Model):
     sugar_g = db.Column(db.Float, default=0)
     sodium_mg = db.Column(db.Float, default=0)
     def __repr__(self): return f'<Ingredient {self.food_name}>'
+
+class IngredientPrice(db.Model):
+    __tablename__ = 'ingredient_prices'
+    id = db.Column(db.Integer, primary_key=True)
+    ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    source = db.Column(db.String(64), nullable=False, default='Manual')
+    price = db.Column(db.Float, nullable=False)
+    quantity = db.Column(db.Float, nullable=False)
+    unit = db.Column(db.String(16), nullable=False, default='g')
+    purchase_date = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    updated_at = db.Column(db.DateTime(timezone=True), onupdate=func.now())
+
+    ingredient = db.relationship('Ingredient', back_populates='prices')
+    user = db.relationship('User', back_populates='ingredient_prices')
+
+    def calculate_cost_per_gram(self):
+        if self.quantity and self.quantity > 0:
+            converted_quantity_base_unit = self.quantity
+            if self.unit.lower() == 'kg':
+                converted_quantity_base_unit *= 1000
+            elif self.unit.lower() == 'l':
+                converted_quantity_base_unit *= 1000
+            elif self.unit.lower() == 'ml':
+                pass
+            
+            return self.price / converted_quantity_base_unit
+        return 0
+
+    def __repr__(self):
+        return f'<IngredientPrice {self.ingredient.food_name} - {self.price}/{self.quantity}{self.unit}>'
+
 
 class Recipe(db.Model):
     __tablename__ = 'recipes'
@@ -61,14 +99,56 @@ class Recipe(db.Model):
     author = db.relationship('User', back_populates='recipes')
     ingredients = db.relationship('RecipeItem', back_populates='recipe', cascade="all, delete-orphan")
     def __repr__(self): return f'<Recipe {self.recipe_name}>'
+
     def calculate_nutrition(self):
         totals = {
             'calories_kcal': 0, 'protein_g': 0, 'fat_g': 0, 'carbohydrate_g': 0,
             'saturated_fat_g': 0, 'trans_fat_g': 0, 'sugar_g': 0, 'sodium_mg': 0,
-            'total_weight_g': 0, 'total_cost': 0 # 新增 total_cost
+            'total_weight_g': 0,
+            'total_ingredient_cost': 0,
+            'ingredient_cost_details': []
         }
-        if not self.ingredients: return totals
+
+        if not self.ingredients:
+            totals['total_cost'] = 0
+            return totals
+
         for item in self.ingredients:
+            # --- START DEBUG PRINTS ---
+            print(f"\n--- Debugging Ingredient: {item.ingredient.food_name} (ID: {item.ingredient.id}) ---")
+            print(f"Recipe's User ID (self.user_id): {self.user_id}")
+            # --- END DEBUG PRINTS ---
+
+            current_ingredient_cost_per_gram = 0
+            cost_source_info = "無價格紀錄"
+            purchase_unit_info = ""
+
+            max_price_entry = db.session.query(IngredientPrice).filter_by(
+                ingredient_id=item.ingredient.id,
+                user_id=self.user_id # 只考慮當前使用者錄入的價格
+            ).order_by(
+                desc(IngredientPrice.price / IngredientPrice.quantity)
+            ).first()
+
+            if max_price_entry:
+                # --- START DEBUG PRINTS ---
+                print(f"  Found max_price_entry for {item.ingredient.food_name}:")
+                print(f"    Price={max_price_entry.price}, Quantity={max_price_entry.quantity}, Unit={max_price_entry.unit}")
+                print(f"    Source={max_price_entry.source}, Purchase Date={max_price_entry.purchase_date}")
+                # --- END DEBUG PRINTS ---
+                current_ingredient_cost_per_gram = max_price_entry.calculate_cost_per_gram()
+                cost_source_info = f"{max_price_entry.source} (NT${max_price_entry.price:.2f}/{max_price_entry.quantity}{max_price_entry.unit})"
+                purchase_unit_info = f"{max_price_entry.unit}"
+            else:
+                # --- START DEBUG PRINTS ---
+                print(f"  No IngredientPrice entry found for {item.ingredient.food_name} by user {self.user_id}. Falling back to Ingredient.cost_per_unit.")
+                print(f"    Ingredient's default cost_per_unit: {item.ingredient.cost_per_unit}")
+                print(f"    Ingredient's default unit_name: {item.ingredient.unit_name}")
+                # --- END DEBUG PRINTS ---
+                current_ingredient_cost_per_gram = item.ingredient.cost_per_unit / 100.0
+                cost_source_info = f"預設 (NT${item.ingredient.cost_per_unit:.2f}/100{item.ingredient.unit_name})"
+                purchase_unit_info = f"{item.ingredient.unit_name}"
+
             scale = item.quantity_g / 100.0
             totals['calories_kcal'] += item.ingredient.calories_kcal * scale
             totals['protein_g'] += item.ingredient.protein_g * scale
@@ -79,9 +159,30 @@ class Recipe(db.Model):
             totals['sugar_g'] += item.ingredient.sugar_g * scale
             totals['sodium_mg'] += item.ingredient.sodium_mg * scale
             totals['total_weight_g'] += item.quantity_g
-            # 成本計算： 食譜項目重量(g) / 100g * 每100g成本
-            # 這裡假設 cost_per_unit 是每 100g 的成本
-            totals['total_cost'] += (item.ingredient.cost_per_unit / 100.0) * item.quantity_g #
+
+            item_total_cost = current_ingredient_cost_per_gram * item.quantity_g
+            totals['total_ingredient_cost'] += item_total_cost
+            
+            # --- START DEBUG PRINTS ---
+            print(f"  Calculated cost_per_gram for {item.ingredient.food_name}: {current_ingredient_cost_per_gram:.4f}")
+            print(f"  Item quantity_g: {item.quantity_g}")
+            print(f"  Item total cost: {item_total_cost:.2f}")
+            print(f"  Cost Source Info for display: {cost_source_info}")
+            print(f"--- End Debugging Ingredient: {item.ingredient.food_name} ---\n")
+            # --- END DEBUG PRINTS ---
+
+            totals['ingredient_cost_details'].append({
+                'ingredient_id': item.ingredient.id,
+                'ingredient_name': item.ingredient.food_name,
+                'quantity_g': item.quantity_g,
+                'cost_per_gram': current_ingredient_cost_per_gram,
+                'item_total_cost': item_total_cost,
+                'cost_source': cost_source_info,
+                'purchase_unit': purchase_unit_info
+            })
+        
+        totals['total_cost'] = totals['total_ingredient_cost']
+
         return totals
 
 class RecipeItem(db.Model):
@@ -101,16 +202,56 @@ class Product(db.Model):
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
     updated_at = db.Column(db.DateTime(timezone=True), onupdate=func.now())
-    calculated_cost = db.Column(db.Float, default=0) # 計算出的產品成本
-    selling_price = db.Column(db.Float, default=0) # 產品售價
-    stock_quantity = db.Column(db.Integer, default=0) # 庫存數量
+    calculated_cost = db.Column(db.Float, default=0)
+    selling_price = db.Column(db.Float, default=0)
+    stock_quantity = db.Column(db.Integer, default=0)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id'), nullable=False)
     creator = db.relationship('User', back_populates='products')
     recipe = db.relationship('Recipe')
+    
+    batch_size = db.Column(db.Integer, default=1)
+    bake_power_w = db.Column(db.Float, default=0)
+    bake_time_min = db.Column(db.Float, default=0)
+    production_time_hr = db.Column(db.Float, default=0)
+    
     def __repr__(self): return f'<Product {self.product_name}>'
+
+    def calculate_total_product_cost(self, electricity_cost_per_kwh=3.0, labor_cost_per_hour=200.0):
+        recipe_cost_details = self.recipe.calculate_nutrition()
+        total_ingredient_cost_for_recipe = recipe_cost_details['total_ingredient_cost']
+
+        ingredient_cost_per_serving = total_ingredient_cost_for_recipe / (self.recipe.servings_count or 1)
+
+        electricity_cost_total = 0
+        if self.bake_power_w and self.bake_time_min and self.bake_time_min > 0:
+            total_bake_time_hr = self.bake_time_min / 60.0
+            total_electricity_kwh = (self.bake_power_w * total_bake_time_hr) / 1000.0
+            electricity_cost_total = total_electricity_kwh * electricity_cost_per_kwh
+        
+        labor_cost_total = 0
+        if self.production_time_hr:
+            labor_cost_total = self.production_time_hr * labor_cost_per_hour
+
+        batch_ingredient_cost = (total_ingredient_cost_for_recipe / (self.recipe.servings_count or 1)) * (self.batch_size or 1)
+
+        total_batch_cost = batch_ingredient_cost + electricity_cost_total + labor_cost_total
+
+        average_cost_per_product = 0
+        if self.batch_size and self.batch_size > 0:
+            average_cost_per_product = total_batch_cost / self.batch_size
+        
+        return {
+            'total_ingredient_cost_for_recipe': total_ingredient_cost_for_recipe,
+            'ingredient_cost_details': recipe_cost_details['ingredient_cost_details'],
+            'batch_ingredient_cost': batch_ingredient_cost,
+            'electricity_cost_total': electricity_cost_total,
+            'labor_cost_total': labor_cost_total,
+            'total_batch_cost': total_batch_cost,
+            'average_cost_per_product': average_cost_per_product
+        }
+
     def calculate_profit_margin(self):
-        # 計算毛利率 (Selling Price - Cost) / Selling Price
         if self.selling_price and self.selling_price > 0:
             return ((self.selling_price - self.calculated_cost) / self.selling_price) * 100
         return 0
@@ -147,4 +288,3 @@ class OrderItem(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     product = db.relationship('Product')
     def __repr__(self): return f'<OrderItem order:{self.order_id} product:{self.product_id} qty:{self.quantity}>'
-

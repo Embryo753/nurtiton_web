@@ -1,41 +1,192 @@
+{# app/templates/products/edit_product.html #}
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>編輯產品: {{ product.product_name }}</h1>
-    <p><a href="{{ url_for('products.index') }}">&larr; 返回產品管理</a></p>
+<style>
+    /* 移除大部分自定義 Style，使用 Bootstrap 類別 */
+    /* 這裡可以保留一些針對特定組件的微調，如果 Bootstrap 沒有提供 */
+    .panel-min-height {
+        min-height: 50vh; /* 調整為視窗高度的 50% */
+    }
+</style>
 
-    <hr>
-    
-    <form action="" method="post" novalidate>
-        {{ form.hidden_tag() }}
-        {# 顯示關聯的食譜，並連結到食譜詳細頁面 #}
-        <p>
-            關聯食譜: <a href="{{ url_for('recipes.recipe_detail', recipe_id=product.recipe.id) }}">{{ product.recipe.recipe_name }}</a>
-        </p>
-        {# 顯示重新計算後的食譜總成本 #}
-        <p>
-            食譜總成本 (自動計算): <strong>NT$ {{ recalculated_cost | round(2) }}</strong>
-        </p>
-        <p>
-            {{ form.product_name.label }}:<br>
-            {{ form.product_name(size=64) }}<br>
-            {% for error in form.product_name.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
-        </p>
-        <p>
-            {{ form.description.label }}:<br>
-            {{ form.description(cols=50, rows=4) }}<br>
-            {% for error in form.description.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
-        </p>
-        <p>
-            {{ form.selling_price.label }}:<br>
-            {{ form.selling_price(size=16) }}<br>
-            {% for error in form.selling_price.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
-        </p>
-        <p>
-            {{ form.stock_quantity.label }}:<br>
-            {{ form.stock_quantity(size=16) }}<br>
-            {% for error in form.stock_quantity.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}
-        </p>
-        <p>{{ form.submit() }}</p>
-    </form>
+<div class="container">
+    <h1 class="mb-4">編輯產品: {{ product.product_name }}</h1>
+    <p class="mb-4"><a href="{{ url_for('products.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-2"></i>返回產品管理</a></p>
+    <hr class="my-4">
+
+    <div class="d-flex flex-column flex-lg-row gap-4 mb-4">
+        <div id="left-panel" class="col-lg-4 p-3 border rounded shadow-sm panel-min-height">
+            <h3 class="mb-3 text-primary">食譜資訊</h3>
+            <p class="mb-1"><strong>食譜名稱:</strong> <a href="{{ url_for('recipes.recipe_detail', recipe_id=product.recipe.id) }}" class="text-decoration-none">{{ product.recipe.recipe_name }}</a></p>
+            <p class="mb-1"><strong>食譜份數:</strong> <span class="badge bg-info text-dark fs-6">{{ product.recipe.servings_count }} 份</span></p>
+            <p class="mb-1"><strong>食譜總重量:</strong> <span class="badge bg-light text-dark fs-6">{{ product.recipe.final_weight_g or recipe_calculated_data.total_weight_g | round(1) }} 克</span></p>
+            <p class="mb-0"><strong>食譜食材總成本:</strong> <span class="badge bg-light text-dark fs-6">NT$ {{ recipe_calculated_data.total_ingredient_cost | round(2) }}</span></p>
+        </div>
+
+        <div id="center-panel" class="col-lg-8 p-3 border rounded shadow-sm panel-min-height">
+            <h3 class="mb-3">產品資料與成本計算</h3>
+            <form action="" method="post" novalidate>
+                {{ form.hidden_tag() }}
+                <h4 class="form-section-title">產品基本資訊</h4>
+                <div class="mb-3">
+                    {{ form.product_name.label(class="form-label") }}
+                    {{ form.product_name(class="form-control") }}
+                    {% for error in form.product_name.errors %}<span class="text-danger small">{{ error }}</span>{% endfor %}
+                </div>
+                <div class="mb-3">
+                    {{ form.description.label(class="form-label") }}
+                    {{ form.description(class="form-control", rows=3) }}
+                    {% for error in form.description.errors %}<span class="text-danger small">{{ error }}</span>{% endfor %}
+                </div>
+                
+                <h4 class="form-section-title">生產參數</h4>
+                <div class="mb-3">
+                    {{ form.batch_size.label(class="form-label") }}
+                    {{ form.batch_size(class="form-control", min=1) }}
+                    {% for error in form.batch_size.errors %}<span class="text-danger small">{{ error }}</span>{% endfor %}
+                </div>
+                <div class="mb-3">
+                    {{ form.bake_power_w.label(class="form-label") }}
+                    {{ form.bake_power_w(class="form-control", min=0, step="0.01") }}
+                    {% for error in form.bake_power_w.errors %}<span class="text-danger small">{{ error }}</span>{% endfor %}
+                </div>
+                <div class="mb-3">
+                    {{ form.bake_time_min.label(class="form-label") }}
+                    {{ form.bake_time_min(class="form-control", min=0, step="0.01") }}
+                    {% for error in form.bake_time_min.errors %}<span class="text-danger small">{{ error }}</span>{% endfor %}
+                </div>
+                <div class="mb-3">
+                    {{ form.production_time_hr.label(class="form-label") }}
+                    {{ form.production_time_hr(class="form-control", min=0, step="0.01") }}
+                    {% for error in form.production_time_hr.errors %}<span class="text-danger small">{{ error }}</span>{% endfor %}
+                </div>
+
+                <h4 class="form-section-title">食材成本細項</h4>
+                <table class="table table-sm table-bordered cost-table">
+                    <thead>
+                        <tr>
+                            <th>食材名稱</th>
+                            <th class="text-end">用量 (克)</th>
+                            <th class="text-end">每克成本 (NT$)</th>
+                            <th>來源</th>
+                            <th class="text-end">總計 (NT$)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if recipe_calculated_data.ingredient_cost_details %}
+                            {% for item in recipe_calculated_data.ingredient_cost_details %}
+                            <tr>
+                                <td>{{ item.ingredient_name }}</td>
+                                <td class="text-end">{{ item.quantity_g | round(1) }}</td>
+                                <td class="text-end">{{ item.cost_per_gram | round(4) }}</td>
+                                <td>{{ item.cost_source or '無' }}</td>
+                                <td class="text-end">{{ item.item_total_cost | round(2) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="5" class="text-muted text-center">此食譜沒有食材細項。</td></tr>
+                        {% endif %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="4" class="text-end">食譜食材總成本:</th>
+                            <th class="text-end">NT$ {{ recipe_calculated_data.total_ingredient_cost | round(2) }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <h4 class="form-section-title">總成本預覽 (每批次)</h4>
+                <div id="cost-preview-section" class="p-3 bg-light rounded">
+                    <p class="mb-1">每個產品食材成本: <strong id="per-product-ingredient-cost">NT$ {{ total_costs_display.average_cost_per_product | round(2) }}</strong></p>
+                    <p class="mb-1">批次食材總成本: <strong id="batch-ingredient-total-cost">NT$ {{ total_costs_display.batch_ingredient_cost | round(2) }}</strong></p>
+                    <p class="mb-1">電費成本 (費率 {{ electricity_cost_per_kwh }} NT$/kWh): <strong id="electricity-cost">NT$ {{ total_costs_display.electricity_cost_total | round(2) }}</strong></p>
+                    <p class="mb-1">人力成本 (費率 {{ labor_cost_per_hour }} NT$/hr): <strong id="labor-cost">NT$ {{ total_costs_display.labor_cost_total | round(2) }}</strong></p>
+                    <p class="mb-1">批次總成本: <strong id="total-batch-cost">NT$ {{ total_costs_display.total_batch_cost | round(2) }}</strong></p>
+                    <p class="fs-5 text-success mt-3">平均每個產品總成本: <strong id="avg-cost-per-product">NT$ {{ total_costs_display.average_cost_per_product | round(2) }}</strong></p>
+                </div>
+
+                <h4 class="form-section-title">產品定價與庫存</h4>
+                <div class="mb-3">
+                    {{ form.selling_price.label(class="form-label") }}
+                    {{ form.selling_price(class="form-control", min=0, step="0.01") }}
+                    {% for error in form.selling_price.errors %}<span class="text-danger small">{{ error }}</span>{% endfor %}
+                </div>
+                <div class="mb-3">
+                    {{ form.stock_quantity.label(class="form-label") }}
+                    {{ form.stock_quantity(class="form-control", min=0) }}
+                    {% for error in form.stock_quantity.errors %}<span class="text-danger small">{{ error }}</span>{% endfor %}
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100">儲存產品</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const recipeServingsCount = {{ product.recipe.servings_count | tojson }};
+    const totalIngredientCostForRecipe = {{ recipe_calculated_data.total_ingredient_cost | tojson }};
+    const electricityCostPerKwh = {{ electricity_cost_per_kwh | tojson }};
+    const laborCostPerHour = {{ labor_cost_per_hour | tojson }};
+
+    const batchSizeInput = document.getElementById('batch_size');
+    const bakePowerWInput = document.getElementById('bake_power_w');
+    const bakeTimeMinInput = document.getElementById('bake_time_min');
+    const productionTimeHrInput = document.getElementById('production_time_hr');
+
+    const perProductIngredientCostElem = document.getElementById('per-product-ingredient-cost');
+    const batchIngredientTotalCostElem = document.getElementById('batch-ingredient-total-cost');
+    const electricityCostElem = document.getElementById('electricity-cost');
+    const laborCostElem = document.getElementById('labor-cost');
+    const totalBatchCostElem = document.getElementById('total-batch-cost');
+    const avgCostPerProductElem = document.getElementById('avg-cost-per-product');
+
+    function calculateAndDisplayCosts() {
+        const batchSize = parseFloat(batchSizeInput.value) || 1;
+        const bakePowerW = parseFloat(bakePowerWInput.value) || 0;
+        const bakeTimeMin = parseFloat(bakeTimeMinInput.value) || 0;
+        const productionTimeHr = parseFloat(productionTimeHrInput.value) || 0;
+
+        // 計算每個產品的食材成本
+        const ingredientCostPerServing = totalIngredientCostForRecipe / (recipeServingsCount || 1);
+        perProductIngredientCostElem.textContent = `NT$ ${ingredientCostPerServing.toFixed(2)}`;
+
+        // 計算一個批次的食材總成本
+        const batchIngredientTotalCost = ingredientCostPerServing * batchSize;
+        batchIngredientTotalCostElem.textContent = `NT$ ${batchIngredientTotalCost.toFixed(2)}`;
+
+        // 計算電費成本 (一個批次)
+        let electricityCost = 0;
+        if (bakePowerW > 0 && bakeTimeMin > 0) {
+            const totalBakeTimeHr = bakeTimeMin / 60.0;
+            const totalElectricityKwh = (bakePowerW * totalBakeTimeHr) / 1000.0;
+            electricityCost = totalElectricityKwh * electricityCostPerKwh;
+        }
+        electricityCostElem.textContent = `NT$ ${electricityCost.toFixed(2)}`;
+
+        // 計算人力成本 (一個批次)
+        const laborCost = productionTimeHr * laborCostPerHour;
+        laborCostElem.textContent = `NT$ ${laborCost.toFixed(2)}`;
+
+        // 計算一個批次的總成本 (食材 + 電費 + 人力)
+        const totalBatchCost = batchIngredientTotalCost + electricityCost + laborCost;
+        totalBatchCostElem.textContent = `NT$ ${totalBatchCost.toFixed(2)}`;
+
+        // 計算平均每個產品的總成本
+        const avgCostPerProduct = batchSize > 0 ? totalBatchCost / batchSize : 0;
+        avgCostPerProductElem.textContent = `NT$ ${avgCostPerProduct.toFixed(2)}`;
+    }
+
+    // 監聽所有輸入欄位的變化
+    batchSizeInput.addEventListener('input', calculateAndDisplayCosts);
+    bakePowerWInput.addEventListener('input', calculateAndDisplayCosts);
+    bakeTimeMinInput.addEventListener('input', calculateAndDisplayCosts);
+    productionTimeHrInput.addEventListener('input', calculateAndDisplayCosts);
+
+    // 初始化計算顯示
+    calculateAndDisplayCosts();
+});
+</script>
 {% endblock %}

@@ -1,0 +1,76 @@
+{# app/templates/pricing/index.html #}
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .table .text-end {
+        text-align: right;
+    }
+    /* 載入動畫 */
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+        border-width: .15em;
+    }
+</style>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ title }}</h1>
+        <div>
+            <a href="{{ url_for('pricing.add_price') }}" class="btn btn-success btn-lg me-2">
+                <i class="bi bi-plus-lg me-2"></i>新增價格紀錄
+            </a>
+            <a href="{{ url_for('pricing.upload_prices') }}" class="btn btn-info btn-lg">
+                <i class="bi bi-upload me-2"></i>匯入價格紀錄
+            </a>
+        </div>
+    </div>
+
+    {% if prices %}
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover table-bordered mb-0">
+                <thead>
+                    <tr>
+                        <th>食材名稱</th>
+                        <th>來源</th>
+                        <th class="text-end">購買價格 (NT$)</th>
+                        <th class="text-end">購買數量</th>
+                        <th>單位</th>
+                        <th class="text-end">每單位成本 (NT$/單位)</th>
+                        <th>購買日期</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for price in prices %}
+                    <tr>
+                        <td>{{ price.ingredient.food_name }}</td>
+                        <td>{{ price.source }}</td>
+                        <td class="text-end">{{ price.price | round(2) }}</td>
+                        <td class="text-end">{{ price.quantity | round(3) }}</td>
+                        <td>{{ price.unit }}</td>
+                        <td class="text-end">{{ price.calculate_cost_per_gram() | round(3) }}</td>
+                        <td>{{ price.purchase_date.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <a href="{{ url_for('pricing.edit_price', price_id=price.id) }}" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="bi bi-pencil me-1"></i>編輯
+                            </a>
+                            <form action="{{ url_for('pricing.delete_price', price_id=price.id) }}" method="post" onsubmit="return confirm('確定要刪除這筆價格紀錄嗎？');" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash me-1"></i>刪除
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-secondary mt-5 text-center p-4 rounded shadow-sm">
+            <h4 class="alert-heading">目前沒有食材價格紀錄喔！</h4>
+            <p>點擊上方「新增價格紀錄」或「匯入價格紀錄」來開始管理您的食材成本吧！</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{# app/templates/pricing/upload_prices.html #}
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container mt-4">
+        <h1>{{ title }}</h1>
+        <p><a href="{{ url_for('pricing.index') }}">&larr; 返回價格紀錄列表</a></p>
+
+        <div class="alert alert-info mt-3" role="alert">
+            請上傳包含以下欄位的 CSV 或 Excel 檔案：<br>
+            <code>食材名稱</code>, <code>來源</code>, <code>購買價格</code>, <code>購買總數量</code>, <code>數量單位</code><br>
+            範例：`雞胸肉, 手動輸入, 89.0, 500, g`
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.csv_file.label(class="form-label") }}
+                {{ form.csv_file(class="form-control") }}
+                {% for error in form.csv_file.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            {{ form.submit(class="btn btn-primary") }}
+        </form>
+    </div>
+{% endblock %}

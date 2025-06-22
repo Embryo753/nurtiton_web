@@ -1,14 +1,31 @@
+{# app/templates/main/index.html #}
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>您好，歡迎來到營養標示與POS系統！</h1>
-    <p>這裡是首頁，請點擊上方的導覽列開始使用。</p>
+<div class="container text-center py-5">
+    <h1 class="display-4 mb-4 text-primary">您好，歡迎來到營養標示與POS系統！</h1>
+    <p class="lead mb-4">這裡是首頁，請點擊上方的導覽列開始使用。</p>
     
     {% if not current_user.is_authenticated %}
-        <p>
-            請先 <a href="{{ url_for('auth.login') }}">登入</a> 或
-            <a href="{{ url_for('auth.register') }}">註冊</a>
-            一個新帳號。
-        </p>
+        <div class="mt-5">
+            <p class="fs-5">請先開始使用我們的服務：</p>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg me-3">
+                <i class="bi bi-box-arrow-in-right me-2"></i>登入
+            </a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-lg">
+                <i class="bi bi-person-plus me-2"></i>註冊新帳號
+            </a>
+        </div>
+    {% else %}
+        <div class="mt-5">
+            <p class="fs-5">開始管理您的食譜和產品：</p>
+            <a href="{{ url_for('recipes.index') }}" class="btn btn-success btn-lg me-3">
+                <i class="bi bi-journal-text me-2"></i>我的食譜
+            </a>
+            <a href="{{ url_for('products.index') }}" class="btn btn-info btn-lg">
+                <i class="bi bi-box-seam me-2"></i>產品管理
+            </a>
+        </div>
     {% endif %}
+</div>
 {% endblock %}

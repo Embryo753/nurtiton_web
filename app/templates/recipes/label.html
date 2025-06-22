@@ -2,63 +2,134 @@
 <html lang="zh-Hant-TW">
 <head>
     <meta charset="UTF-8">
-    <title>營養標示 - {{ final_texts.product_name }}</title>
+    <title>營養標示 - {{ recipe.recipe_name }}</title>
     <style>
-        /* 您的所有 CSS 樣式都保持原樣 */
-        body { font-family: 'Microsoft JhengHei', '微軟正黑體', 'Heiti TC', '黑體-繁', sans-serif; background-color: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding-top: 20px; }
-        @media print { body { background-color: #fff; -webkit-print-color-adjust: exact; } .no-print { display: none; } }
-        .label-wrapper { width: 450px; border: 1px dashed #999; padding: 20px; background-color: #fff; }
-        .label-container { display: flex; flex-direction: row; gap: 20px; font-size: 10pt; line-height: 1.5; }
+        /* 定義與 base.html 中相同的顏色變數和圓角/陰影，確保打印樣式一致 */
+        :root {
+            --bs-primary-light: #A0B3C9;
+            --bs-secondary-light: #C0C0C0;
+            --bs-success-light: #B4D7BF;
+            --bs-info-light: #ADD8E6;
+            --bs-warning-light: #F0E68C;
+            --bs-danger-light: #F2B4B4;
+            --bs-primary: #85A0BA;
+            --bs-success: #88CC88;
+
+            --card-border-radius: 0.75rem;
+            --card-shadow: rgba(0, 0, 0, 0.08) 0px 4px 12px;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', '微軟正黑體', 'Heiti TC', '黑體-繁', sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            color: #333; /* 統一文字顏色 */
+        }
+        @media print {
+            body { background-color: #fff; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+            .no-print { display: none; }
+            /* 打印時移除陰影和邊框，讓標籤更清晰 */
+            .label-wrapper { box-shadow: none !important; border: none !important; }
+            .nutrition-table { border: 1px solid black !important; } /* 確保營養標示表格邊框清晰 */
+            .nutrition-table th, .nutrition-table td { border-color: black !important; }
+        }
+        .label-wrapper {
+            width: 480px; /* 稍微增加寬度以容納更多內容 */
+            padding: 30px; /* 增加 padding */
+            background-color: #fff;
+            border-radius: var(--card-border-radius); /* 圓角 */
+            box-shadow: var(--card-shadow); /* 柔和陰影 */
+            border: 1px solid rgba(0,0,0,0.08); /* 柔和邊框 */
+            margin-bottom: 30px; /* 底部間距 */
+        }
+        .label-container {
+            display: flex;
+            flex-direction: row;
+            gap: 25px; /* 增加間距 */
+            font-size: 10.5pt; /* 字體稍微大一點 */
+            line-height: 1.6; /* 增加行高 */
+        }
         .info-section { flex: 1; }
         .nutrition-section { flex: 1; }
-        .info-section p, .info-section div { margin: 0 0 5px 0; }
-        strong { font-weight: bold; }
-        .brand-logo { font-size: 18pt; font-weight: bold; text-align: center; margin-bottom: 15px; letter-spacing: 2px; border: 3px double black; padding: 5px; }
-        .nutrition-title { font-weight: bold; font-size: 16pt; text-align: center; margin-bottom: 10px; letter-spacing: 2px; }
-        /* 使用 pre 標籤後，我們不再需要 nutrition-table 的複雜樣式，但予以保留以備不時之需 */
-        .nutrition-table { width: 100%; border-collapse: collapse; border-top: 2px solid black; border-bottom: 2px solid black; }
-        .nutrition-table th, .nutrition-table td { padding: 3px 0; text-align: left; border-bottom: 1px solid black; }
+        .info-section p, .info-section div { margin: 0 0 6px 0; } /* 調整行距 */
+        strong { font-weight: bold; color: #444; } /* 加粗文字顏色更深 */
+        .brand-logo {
+            font-size: 20pt; /* 品牌名稱更大 */
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px; /* 增加底部間距 */
+            letter-spacing: 2px;
+            border: 3px double var(--bs-primary); /* 邊框使用主色 */
+            padding: 5px 10px;
+            color: var(--bs-primary);
+            border-radius: 0.5rem; /* 圓角 */
+        }
+        .nutrition-title {
+            font-weight: bold;
+            font-size: 18pt; /* 營養標示標題更大 */
+            text-align: center;
+            margin-bottom: 12px;
+            letter-spacing: 2px;
+            color: var(--bs-primary);
+        }
+        .nutrition-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-top: 2px solid black;
+            border-bottom: 2px solid black;
+        }
+        .nutrition-table th, .nutrition-table td {
+            padding: 4px 10px; /* 增加 padding */
+            text-align: left;
+            border-bottom: 1px solid rgba(0,0,0,0.2); /* 柔和的黑色邊框 */
+        }
         .nutrition-table th { font-weight: normal; }
         .nutrition-table td { text-align: right; }
-        .nutrition-table .header-row th { text-align: right; font-weight: bold; border-bottom: 2px solid black; }
-        .nutrient-name-indent { padding-left: 15px; }
-        .no-border-bottom { border-bottom: none !important; }
-        .footer-notes { font-size: 9pt; margin-top: 10px; }
-        /* NEW: 為 pre 標籤設定樣式，讓它看起來像營養標示 */
-        pre.nutrition-block {
-            font-family: 'Microsoft JhengHei', '微軟正黑體', 'Heiti TC', '黑體-繁', sans-serif;
-            font-size: 10pt;
-            line-height: 1.6;
-            margin: 0;
-            white-space: pre-wrap; /* 自動換行 */
+        .nutrition-table .header-row th {
+            text-align: right;
+            font-weight: bold;
+            border-bottom: 2px solid black;
         }
+        .nutrient-name-indent { padding-left: 20px; }
+        .no-border-bottom { border-bottom: none !important; }
+        .footer-notes { font-size: 9.5pt; margin-top: 15px; line-height: 1.4; color: #555; }
     </style>
 </head>
 <body>
-    <div class="no-print" style="margin-bottom: 20px;"><button onclick="window.print();">列印此標籤</button></div>
+    <div class="no-print" style="margin-bottom: 20px;">
+        <button onclick="window.print();" style="padding: 10px 20px; font-size: 1rem; border-radius: 0.5rem; background-color: var(--bs-info); color: white; border: none; cursor: pointer; box-shadow: var(--card-shadow);">
+            <i class="bi bi-printer me-2"></i>列印此標籤
+        </button>
+    </div>
     <div class="label-wrapper">
         <div class="brand-logo">糕點九一</div>
         <div class="label-container">
             <div class="info-section">
                 <p><strong>品名：</strong>{{ final_texts.product_name }}</p>
-                <p>{{ final_texts.ingredients }}</p>
-                <p>{{ final_texts.net_weight }}</p>
+                <p><strong>成分：</strong>{{ final_texts.ingredients }}</p>
+                <p><strong>淨重：</strong>{{ final_texts.net_weight }}</p>
                 <p><strong>保存方式：</strong>冷凍於-18°C以下</p>
-                <p><strong>保存期限：</strong>冷凍-18°C以下保存30天</p>
+                <p><strong>保存期限：：</strong>冷凍-18°C以下保存30天</p>
                 <p><strong>製造日期：</strong></p>
                 <p><strong>賞味期限：</strong></p>
                 <p><strong>產地：</strong>台灣</p>
-                <hr>
+                <hr style="border-top: 1px dashed rgba(0,0,0,0.1);">
                 <div class="footer-notes">
-                    <p>● <strong>過敏原資訊：</strong>{{ final_texts.allergens }}</p>
-                    <p>● 反式脂肪非人工生成，為乳製品中天然存在。</p>
+                    {% if final_texts.allergens %}<p>● <strong>過敏原資訊：</strong>{{ final_texts.allergens }}</p>{% endif %}
+                    {# 反式脂肪判斷需要從後端計算數據中獲取，這裡 final_texts 是預格式化文本，需要調整邏輯或預先判斷 #}
+                    {# 這裡需要從 per_100g 數據獲取，而不是從 final_texts #}
+                    {% if per_100g.trans_fat_g is defined and per_100g.trans_fat_g > 0 %}<p>● 反式脂肪非人工生成，為乳製品中天然存在。</p>{% endif %}
                     <p>● 本產品已投保南山產物產品責任險1,000萬。</p>
                 </div>
             </div>
             <div class="nutrition-section">
                 <div class="nutrition-title">營養標示</div>
                 <div class="label-section">
-                    <pre class="nutrition-block">{{ final_texts.nutrition }}</pre>
+                    {# 直接使用 final_texts.nutrition，它已經是格式化好的文本 #}
+                    <pre style="font-family: inherit; margin: 0; padding: 0; white-space: pre-wrap;">{{ final_texts.nutrition }}</pre>
                 </div>
             </div>
         </div>

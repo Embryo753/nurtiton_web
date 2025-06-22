@@ -1,41 +1,40 @@
+{# app/templates/recipes/index.html #}
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+<div class="container"> {# 確保整個內容在一個容器內 #}
+    <div class="d-flex justify-content-between align-items-center mb-4"> {# 增加 mb-4 #}
         <h1>{{ title }}</h1>
         <form action="{{ url_for('recipes.create_and_redirect') }}" method="POST">
-            <button type="submit" class="btn btn-success btn-lg">+ 新增食譜</button>
+             <button type="submit" class="btn btn-success btn-lg">
+                 <i class="bi bi-plus-lg me-2"></i>新增食譜 {# 添加 Bootstrap Icons #}
+             </button>
         </form>
     </div>
 
-    {% with messages = get_flashed_messages() %}
-    {% if messages %}
-        {% for message in messages %}
-        <div class="alert alert-info" role="alert">
-            {{ message }}
-        </div>
-        {% endfor %}
-    {% endif %}
-    {% endwith %}
+    {# 閃現訊息已在 base.html 中處理 #}
 
     {% if recipes %}
-        <div class="list-group">
+        <div class="list-group shadow-sm"> {# 添加 shadow-sm #}
             {% for recipe in recipes %}
-            <a href="{{ url_for('recipes.recipe_detail', recipe_id=recipe.id) }}" class="list-group-item list-group-item-action">
-                <div class="d-flex w-100 justify-content-between align-items-center"> {# 調整這裡以對齊內容 #}
-                    <h5 class="mb-1">{{ recipe.recipe_name }}</h5>
-                    <div> {# 新增一個 div 包裹小字和按鈕 #}
-                        <small class="text-muted me-3">最後修改於: {{ recipe.updated_at.strftime('%Y-%m-%d %H:%M') if recipe.updated_at else recipe.created_at.strftime('%Y-%m-%d %H:%M') }}</small> {# 修正日期格式，並新增右側邊距 #}
-                        <a href="{{ url_for('products.create_from_recipe', recipe_id=recipe.id) }}" class="btn btn-primary btn-sm">建立產品</a> {# 新增建立產品按鈕 #}
+            <a href="{{ url_for('recipes.recipe_detail', recipe_id=recipe.id) }}" class="list-group-item list-group-item-action py-3"> {# 增加垂直 padding #}
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <h5 class="mb-1 text-primary">{{ recipe.recipe_name }}</h5> {# 讓食譜名稱更突出 #}
+                    <div>
+                        <small class="text-muted me-3">
+                            <i class="bi bi-clock me-1"></i>最後修改於: {{ recipe.updated_at.strftime('%Y-%m-%d %H:%M') if recipe.updated_at else recipe.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </small>
                     </div>
                 </div>
             </a>
             {% endfor %}
         </div>
     {% else %}
-        <div class="alert alert-secondary mt-4">
-            您目前沒有任何食譜。點擊右上角的「新增食譜」來建立您的第一個食譜吧！
+        <div class="alert alert-secondary mt-5 text-center p-4"> {# 增加 padding 和置中 #}
+            <h4 class="alert-heading">目前沒有食譜喔！</h4>
+            <p>點擊右上角的「新增食譜」按鈕，建立您的第一個食譜吧！</p>
+            <hr>
+            <p class="mb-0">開始您的美食創作之旅。</p>
         </div>
     {% endif %}
 

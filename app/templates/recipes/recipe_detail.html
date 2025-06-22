@@ -1,120 +1,252 @@
+{# app/templates/recipes/recipe_detail.html #}
 {% extends "base.html" %}
 
 {% block content %}
 <style>
-    .main-container { display: flex; flex-direction: row; gap: 20px; }
-    #left-panel { width: 25%; border: 1px solid #ccc; padding: 10px; }
-    #center-panel { width: 45%; border: 1px solid #ccc; padding: 10px; }
-    #right-panel { width: 30%; border: 1px solid #ccc; padding: 10px; }
-    #search-results .result-item { padding: 4px; cursor: pointer; border-bottom: 1px solid #eee; }
-    #search-results .result-item:hover { background-color: #f0f0f0; }
-    #search-results .result-item.active { background-color: #dbeafe; font-weight: bold; }
-    .weight-input { width: 70px; text-align: right; }
-    .remove-btn { cursor: pointer; color: red; font-weight: bold; }
-    .action-btn { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; }
-    .action-btn:disabled { background-color: #ccc; cursor: not-allowed; opacity: 0.6; }
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
-    .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; }
-    .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-    .modal-form-input { width: 95%; margin-bottom: 5px; }
-    .calculated-field { background-color: #eee; }
-    .nutrition-table { border: 1px solid black; border-collapse: collapse; width: 100%; max-width: 400px; margin-top: 10px;}
-    .nutrition-table th, .nutrition-table td { border: 1px solid black; padding: 4px 8px; text-align: left; }
-    .nutrition-table thead { background-color: #f2f2f2; }
-    .nutrition-table .nutrient-name-indent { padding-left: 20px; }
-    .no-border-bottom { border-bottom: none !important; }
-    .arrow-btn { cursor: pointer; color: blue; font-weight: bold; margin: 0 5px; user-select: none; }
+    .panel-min-height {
+        min-height: 70vh; /* 調整為視窗高度的 70% */
+    }
+    .result-item {
+        padding: 0.75rem 1.25rem;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    .result-item:last-child {
+        border-bottom: none;
+    }
+    .result-item:hover {
+        background-color: #f8f9fa;
+    }
+    .result-item.active {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+        color: white !important;
+        font-weight: bold;
+    }
+    .weight-input {
+        width: 80px;
+        text-align: right;
+        display: inline-block;
+    }
+    .remove-btn, .arrow-btn {
+        margin-left: 0.5rem;
+    }
+    .remove-btn {
+        color: var(--bs-danger);
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .arrow-btn {
+        color: var(--bs-info);
+        font-weight: bold;
+        cursor: pointer;
+        user-select: none;
+    }
+    .action-btn {
+        width: 100%;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+    }
+    .action-btn:disabled {
+        background-color: var(--bs-secondary-light) !important;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    .modal-content {
+        border-radius: var(--card-border-radius);
+        box-shadow: var(--card-shadow);
+    }
+    .modal-header {
+        border-bottom: none;
+    }
+    .modal-footer {
+        border-top: none;
+    }
+    .modal-form-input {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    .nutrition-table {
+        border: 1px solid var(--bs-secondary-light);
+        border-collapse: collapse;
+        width: 100%;
+        max-width: 450px;
+        margin-top: 1rem;
+        border-radius: var(--card-border-radius);
+        overflow: hidden;
+    }
+    .nutrition-table th, .nutrition-table td {
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+    }
+    .nutrition-table thead {
+        background-color: #e9ecef;
+        color: #495057;
+    }
+    .nutrition-table .nutrient-name-indent {
+        padding-left: 1.5rem;
+    }
+    .no-border-bottom {
+        border-bottom: none !important;
+    }
+    /* 為表單標題添加統一的下劃線 */
+    .form-section-title {
+        border-bottom: 2px solid var(--bs-primary-light);
+        padding-bottom: 8px;
+        margin-bottom: 20px;
+        font-weight: bold;
+        color: var(--bs-primary);
+        font-size: 1.5rem;
+    }
+    /* 將驗證錯誤訊息調整為更明顯 */
+    .form-control.is-invalid {
+        border-color: var(--bs-danger) !important;
+    }
+    .invalid-feedback {
+        display: block;
+        color: var(--bs-danger) !important;
+    }
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+        border-width: .15em;
+    }
 </style>
 
-<h1>食譜編輯器</h1>
-<p><a href="{{ url_for('recipes.index') }}">&larr; 返回我的食譜列表</a></p>
-<hr>
+<div class="container">
+    <h1 class="mb-4">食譜編輯器</h1>
+    <p class="mb-4"><a href="{{ url_for('recipes.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-2"></i>返回我的食譜列表</a></p>
+    <hr class="my-4">
 
-<div class="main-container">
-    <div id="left-panel">
-        <h3>搜尋食材</h3>
-        <div>
-            <label for="source-filter">種類:</label>
-            <select id="source-filter"><option value="ALL" selected>全部產品</option><option value="TFDA">內建產品</option><option value="USER">自訂產品</option></select>
-        </div>
-        <div>
-            <label for="ingredient-search-box">搜尋目標:</label>
-            <input type="search" id="ingredient-search-box" style="width: 150px;" placeholder="請輸入關鍵字">
-        </div>
-        <hr>
-        <h4>搜尋結果</h4>
-        <div id="search-results" style="min-height: 300px; max-height: 400px; overflow-y: auto; border-top: 1px solid #eee;"></div>
-    </div>
-    <div id="center-panel">
-        <h3>食譜名稱</h3>
-        <p><input type="text" id="recipe-name-input" value="{{ recipe.recipe_name }}" style="width: 95%; font-size: 1.2em;"></p>
-        <hr>
-        <h3>產品內容</h3>
-        <table border="1" cellpadding="5" id="ingredients-table" style="width:100%;">
-            <thead><tr><th>名稱</th><th>重量(克)</th><th>操作</th></tr></thead>
-            <tbody></tbody>
-        </table>
-        <div id="total-weight-display" style="text-align: right; font-weight: bold; padding-top: 10px;"></div>
-        <div id="total-cost-display" style="text-align: right; font-weight: bold; padding-top: 5px;"></div> {# 新增此行以顯示總成本 #}
-        <p id="no-ingredients-msg" style="display: none;">此食譜目前沒有任何食材。</p>
-    </div>
-    <div id="right-panel">
-        <h3>產品設定</h3>
-        <p>烘焙後總重: <input type="number" id="final-weight" placeholder="克" size="5" min="0"> 克</p>
-        <p>產品份數: <input type="number" id="servings-count" size="5" min="1"> 份</p>
-        <p>每份重量: <input type="number" id="serving-weight" readonly class="calculated-field" size="5" min="0"> 克</p>
-        <hr>
-        <h3>標示選項</h3>
-        <div id="label-options-container">
-            <strong>營養素顯示:</strong><br>
-            <div style="columns: 2;">
-            <label><input type="checkbox" class="label-option-nutrient" value="calories_kcal"> 熱量</label><br>
-            <label><input type="checkbox" class="label-option-nutrient" value="protein_g"> 蛋白質</label><br>
-            <label><input type="checkbox" class="label-option-nutrient" value="fat_g"> 脂肪</label><br>
-            <label style="margin-left: 15px;"><input type="checkbox" class="label-option-nutrient" value="saturated_fat_g"> 飽和脂肪</label><br>
-            <label style="margin-left: 15px;"><input type="checkbox" class="label-option-nutrient" value="trans_fat_g"> 反式脂肪</label><br>
-            <label><input type="checkbox" class="label-option-nutrient" value="carbohydrate_g"> 碳水化合物</label><br>
-            <label style="margin-left: 15px;"><input type="checkbox" class="label-option-nutrient" value="sugar_g"> 糖</label><br>
-            <label><input type="checkbox" class="label-option-nutrient" value="sodium_mg"> 鈉</label><br>
+    <div class="row g-4 mb-4"> {# 使用 Bootstrap grid system #}
+        <div id="left-panel" class="col-lg-3 p-3 border rounded shadow-sm panel-min-height">
+            <h3 class="mb-3 text-primary">搜尋食材</h3>
+            <div class="mb-3">
+                <label for="source-filter" class="form-label">種類:</label>
+                <select id="source-filter" class="form-select">
+                    <option value="ALL" selected>全部產品</option>
+                    <option value="TFDA">內建產品</option>
+                    <option value="USER">自訂產品</option>
+                </select>
             </div>
-            <hr>
-            <strong>過敏原資訊 (本產品含有...):</strong><br>
-            <div style="columns: 2;">
-                <label><input type="checkbox" class="allergen-option" value="甲殼類"> 甲殼類</label><br>
-                <label><input type="checkbox" class="allergen-option" value="芒果"> 芒果</label><br>
-                <label><input type="checkbox" class="allergen-option" value="花生"> 花生</label><br>
-                <label><input type="checkbox" class="allergen-option" value="牛奶、羊奶"> 牛奶、羊奶</label><br>
-                <label><input type="checkbox" class="allergen-option" value="蛋"> 蛋</label><br>
-                <label><input type="checkbox" class="allergen-option" value="堅果類"> 堅果類</label><br>
-                <label><input type="checkbox" class="allergen-option" value="芝麻"> 芝麻</label><br>
-                <label><input type="checkbox" class="allergen-option" value="含麩質之穀物"> 含麩質之穀物</label><br>
-                <label><input type="checkbox" class="allergen-option" value="大豆"> 大豆</label><br>
-                <label><input type="checkbox" class="allergen-option" value="魚類"> 魚類</label><br>
-                <label><input type="checkbox" class="allergen-option" value="亞硫酸鹽類"> 亞硫酸鹽類</label><br>
+            <div class="mb-3">
+                <label for="ingredient-search-box" class="form-label">搜尋目標:</label>
+                <input type="search" id="ingredient-search-box" class="form-control" placeholder="請輸入關鍵字">
+            </div>
+            <hr class="my-3">
+            <h4 class="mb-3">搜尋結果</h4>
+            <div id="search-results" class="list-group" style="max-height: calc(70vh - 200px); overflow-y: auto;">
+                <p class="text-muted p-2 text-center">請輸入關鍵字搜尋。</p>
             </div>
         </div>
-        <hr>
-        <button id="save-recipe-btn" class="action-btn">儲存食譜</button>
-        <a id="print-preview-btn" href="{{ url_for('recipes.recipe_label', recipe_id=recipe.id) }}" target="_blank" rel="noopener noreferrer">
-            <button class="action-btn" style="background-color: #17a2b8; color: white;">預覽/列印標籤</button>
-        </a>
+
+        <div id="center-panel" class="col-lg-5 p-3 border rounded shadow-sm panel-min-height">
+            <h3 class="mb-3 text-primary">食譜名稱</h3>
+            <input type="text" id="recipe-name-input" value="{{ recipe.recipe_name }}" class="form-control form-control-lg mb-3">
+            <hr class="my-3">
+            <h3 class="mb-3 text-primary">產品內容</h3>
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-striped table-hover table-bordered" id="ingredients-table">
+                    <thead>
+                        <tr>
+                            <th>名稱</th>
+                            <th class="text-end">重量(克)</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div id="total-weight-display" class="text-end fw-bold fs-5 mb-1"></div>
+            <div id="total-cost-display" class="text-end fw-bold fs-5 text-success mb-3"></div>
+            <p id="no-ingredients-msg" class="alert alert-info text-center" style="display: none;">此食譜目前沒有任何食材。</p>
+        </div>
+
+        <div id="right-panel" class="col-lg-4 p-3 border rounded shadow-sm panel-min-height">
+            <h3 class="mb-3 text-primary">產品設定</h3>
+            <div class="mb-3">
+                <label for="final-weight" class="form-label">烘焙後總重:</label>
+                <input type="number" id="final-weight" class="form-control" placeholder="克" min="0" step="0.1">
+            </div>
+            <div class="mb-3">
+                <label for="servings-count" class="form-label">產品份數:</label>
+                <input type="number" id="servings-count" class="form-control" min="1">
+            </div>
+            <div class="mb-3">
+                <label for="serving-weight" class="form-label">每份重量:</label>
+                <input type="number" id="serving-weight" class="form-control calculated-field" readonly min="0" step="0.1">
+            </div>
+            <hr class="my-3">
+            <h3 class="mb-3 text-primary">標示選項</h3>
+            <div id="label-options-container">
+                <p class="fw-bold">營養素顯示:</p>
+                <div class="row row-cols-2 g-2 mb-3">
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input label-option-nutrient" id="nutrient-calories_kcal" value="calories_kcal"><label class="form-check-label" for="nutrient-calories_kcal">熱量</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input label-option-nutrient" id="nutrient-protein_g" value="protein_g"><label class="form-check-label" for="nutrient-protein_g">蛋白質</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input label-option-nutrient" id="nutrient-fat_g" value="fat_g"><label class="form-check-label" for="nutrient-fat_g">脂肪</label></div></div>
+                    <div class="col ms-4"><div class="form-check"><input type="checkbox" class="form-check-input label-option-nutrient" id="nutrient-saturated_fat_g" value="saturated_fat_g"><label class="form-check-label" for="nutrient-saturated_fat_g">飽和脂肪</label></div></div>
+                    <div class="col ms-4"><div class="form-check"><input type="checkbox" class="form-check-input label-option-nutrient" id="nutrient-trans_fat_g" value="trans_fat_g"><label class="form-check-label" for="nutrient-trans_fat_g">反式脂肪</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input label-option-nutrient" id="nutrient-carbohydrate_g" value="carbohydrate_g"><label class="form-check-label" for="nutrient-carbohydrate_g">碳水化合物</label></div></div>
+                    <div class="col ms-4"><div class="form-check"><input type="checkbox" class="form-check-input label-option-nutrient" id="nutrient-sugar_g" value="sugar_g"><label class="form-check-label" for="nutrient-sugar_g">糖</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input label-option-nutrient" id="nutrient-sodium_mg" value="sodium_mg"><label class="form-check-label" for="nutrient-sodium_mg">鈉</label></div></div>
+                </div>
+                <hr class="my-3">
+                <p class="fw-bold">過敏原資訊 (本產品含有...):</p>
+                <div class="row row-cols-2 g-2 mb-3">
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input allergen-option" id="allergen-甲殼類" value="甲殼類"><label class="form-check-label" for="allergen-甲殼類">甲殼類</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input allergen-option" id="allergen-芒果" value="芒果"><label class="form-check-label" for="allergen-芒果">芒果</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input allergen-option" id="allergen-花生" value="花生"><label class="form-check-label" for="allergen-花生">花生</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input allergen-option" id="allergen-牛奶、羊奶" value="牛奶、羊奶"><label class="form-check-label" for="allergen-牛奶、羊奶">牛奶、羊奶</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input allergen-option" id="allergen-蛋" value="蛋"><label class="form-check-label" for="allergen-蛋">蛋</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input allergen-option" id="allergen-堅果類" value="堅果類"><label class="form-check-label" for="allergen-堅果類">堅果類</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input allergen-option" id="allergen-芝麻" value="芝麻"><label class="form-check-label" for="allergen-芝麻">芝麻</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input allergen-option" id="allergen-含麩質之穀物" value="含麩質之穀物"><label class="form-check-label" for="allergen-含麩質之穀物">含麩質之穀物</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input allergen-option" id="allergen-大豆" value="大豆"><label class="form-check-label" for="allergen-大豆">大豆</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input allergen-option" id="allergen-魚類" value="魚類"><label class="form-check-label" for="allergen-魚類">魚類</label></div></div>
+                    <div class="col"><div class="form-check"><input type="checkbox" class="form-check-input allergen-option" id="allergen-亞硫酸鹽類" value="亞硫酸鹽類"><label class="form-check-label" for="allergen-亞硫酸鹽類">亞硫酸鹽類</label></div></div>
+                </div>
+            </div>
+            <hr class="my-3">
+            <button id="save-recipe-btn" class="action-btn btn btn-primary">
+                <i class="bi bi-save me-2"></i>儲存食譜
+            </button>
+            <a id="print-preview-btn" href="{{ url_for('recipes.recipe_label', recipe_id=recipe.id) }}" target="_blank" rel="noopener noreferrer" class="d-block text-decoration-none">
+                <button class="action-btn btn btn-info">
+                    <i class="bi bi-printer me-2"></i>預覽/列印標籤
+                </button>
+            </a>
+        </div>
     </div>
-</div>
-<hr>
-<div id="nutrition-preview"></div>
-<div id="add-ingredient-modal" class="modal">
-    <div class="modal-content">
-        <span id="close-modal-btn" class="close-btn">&times;</span>
-        <h2 id="modal-title">新增自訂食材</h2>
-        <div id="modal-form-container"></div>
-        <button id="modal-save-btn" class="action-btn" style="background-color: #28a745; color: white;">儲存新食材</button>
+    <hr class="my-4">
+    <div id="nutrition-preview" class="p-3 border rounded shadow-sm"></div> {# 營養標示預覽區塊 #}
+
+    <div id="add-ingredient-modal" class="modal fade" tabindex="-1" aria-labelledby="modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-title">新增自訂食材</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="modal-form-container"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button id="modal-save-btn" class="btn btn-success">儲存新食材</button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
+// 修正：initialState 必須在 DOMContentLoaded 外部定義，以便全局作用域可見或在 script 標籤頂部定義
 const initialState = {{ initial_state | tojson }};
+
 document.addEventListener('DOMContentLoaded', function() {
-    let recipeState = initialState;
+    const recipeState = initialState; // 確保 recipeState 被正確初始化
     const recipeNameInput = document.getElementById('recipe-name-input');
     const servingWeightInput = document.getElementById('serving-weight');
     const servingsCountInput = document.getElementById('servings-count');
@@ -127,15 +259,60 @@ document.addEventListener('DOMContentLoaded', function() {
     const saveButton = document.getElementById('save-recipe-btn');
     const printPreviewButton = document.getElementById('print-preview-btn');
     const totalWeightDiv = document.getElementById('total-weight-display');
-    const totalCostDiv = document.getElementById('total-cost-display'); // 新增，用於顯示總成本
+    const totalCostDiv = document.getElementById('total-cost-display');
     const labelOptionsContainer = document.getElementById('label-options-container');
     const recipeId = {{ recipe.id }};
-    const modal = document.getElementById('add-ingredient-modal');
+    const addIngredientModal = new bootstrap.Modal(document.getElementById('add-ingredient-modal'));
     const modalFormContainer = document.getElementById('modal-form-container');
     const modalSaveButton = document.getElementById('modal-save-btn');
-    const closeModalButton = document.getElementById('close-modal-btn');
-    const formTemplate = `<p>食材名稱:<br><input type="text" id="modal_food_name" class="modal-form-input" required></p><p>成本 (每100g):<br><input type="number" id="modal_cost_per_unit" class="modal-form-input" value="0" required min="0" step="0.01"></p><p>單位名稱:<br><input type="text" id="modal_unit_name" class="modal-form-input" value="g" required></p><p>熱量 (大卡/100g):<br><input type="number" id="modal_calories_kcal" class="modal-form-input" value="0" required min="0" step="0.01"></p><p>蛋白質 (克/100g):<br><input type="number" id="modal_protein_g" class="modal-form-input" value="0" required min="0" step="0.01"></p><p>總脂肪 (克/100g):<br><input type="number" id="modal_fat_g" class="modal-form-input" value="0" required min="0" step="0.01"></p><p>飽和脂肪 (克/100g):<br><input type="number" id="modal_saturated_fat_g" class="modal-form-input" value="0" required min="0" step="0.01"></p><p>反式脂肪 (克/100g):<br><input type="number" id="modal_trans_fat_g" class="modal-form-input" value="0" required min="0" step="0.01"></p><p>總碳水化合物 (克/100g):<br><input type="number" id="modal_carbohydrate_g" class="modal-form-input" value="0" required min="0" step="0.01"></p><p>糖 (克/100g):<br><input type="number" id="modal_sugar_g" class="modal-form-input" value="0" required min="0" step="0.01"></p><p>鈉 (毫克/100g):<br><input type="number" id="modal_sodium_mg" class="modal-form-input" value="0" required min="0" step="0.1"></p>`;
 
+    // 模態框內的表單模板
+    const formTemplate = `
+        <div class="mb-3">
+            <label for="modal_food_name" class="form-label">食材名稱:</label>
+            <input type="text" id="modal_food_name" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="modal_cost_per_unit" class="form-label">成本 (每100g):</label>
+            <input type="number" id="modal_cost_per_unit" class="form-control" value="0" required min="0" step="0.01">
+        </div>
+        <div class="mb-3">
+            <label for="modal_unit_name" class="form-label">單位名稱:</label>
+            <input type="text" id="modal_unit_name" class="form-control" value="g" required>
+        </div>
+        <div class="mb-3">
+            <label for="modal_calories_kcal" class="form-label">熱量 (大卡/100g):</label>
+            <input type="number" id="modal_calories_kcal" class="form-control" value="0" required min="0" step="0.01">
+        </div>
+        <div class="mb-3">
+            <label for="modal_protein_g" class="form-label">蛋白質 (克/100g):</label>
+            <input type="number" id="modal_protein_g" class="form-control" value="0" required min="0" step="0.01">
+        </div>
+        <div class="mb-3">
+            <label for="modal_fat_g" class="form-label">總脂肪 (克/100g):</label>
+            <input type="number" id="modal_fat_g" class="form-control" value="0" required min="0" step="0.01">
+        </div>
+        <div class="mb-3">
+            <label for="modal_saturated_fat_g" class="form-label">飽和脂肪 (克/100g):</label>
+            <input type="number" id="modal_saturated_fat_g" class="form-control" value="0" required min="0" step="0.01">
+        </div>
+        <div class="mb-3">
+            <label for="modal_trans_fat_g" class="form-label">反式脂肪 (克/100g):</label>
+            <input type="number" id="modal_trans_fat_g" class="form-control" value="0" required min="0" step="0.01">
+        </div>
+        <div class="mb-3">
+            <label for="modal_carbohydrate_g" class="form-label">總碳水化合物 (克/100g):</label>
+            <input type="number" id="modal_carbohydrate_g" class="form-control" value="0" required min="0" step="0.01">
+        </div>
+        <div class="mb-3">
+            <label for="modal_sugar_g" class="form-label">糖 (克/100g):</label>
+            <input type="number" id="modal_sugar_g" class="form-control" value="0" required min="0" step="0.01">
+        </div>
+        <div class="mb-3">
+            <label for="modal_sodium_mg" class="form-label">鈉 (毫克/100g):</label>
+            <input type="number" id="modal_sodium_mg" class="form-control" value="0" required min="0" step="0.1">
+        </div>
+    `;
 
     function setupInputEventListeners(containerElement) {
         const inputs = containerElement.querySelectorAll('input[type="number"]');
@@ -153,7 +330,15 @@ document.addEventListener('DOMContentLoaded', function() {
         recipeState.ingredients.forEach(item => {
             const newRow = document.createElement('tr');
             newRow.setAttribute('data-ingredient-id', item.ingredient_id);
-            newRow.innerHTML = `<td>${item.ingredient_name}</td><td><input type="number" class="weight-input" value="${item.quantity_g}" min="0" step="0.1" data-ingredient-id="${item.ingredient_id}"></td><td><span class="arrow-btn up-btn" title="上移">↑</span><span class="arrow-btn down-btn" title="下移">↓</span><span class="remove-btn" data-ingredient-id="${item.ingredient_id}">移除</span></td>`;
+            newRow.innerHTML = `
+                <td>${item.ingredient_name}</td>
+                <td class="text-end"><input type="number" class="form-control form-control-sm text-end weight-input" value="${item.quantity_g}" min="0" step="0.1" data-ingredient-id="${item.ingredient_id}"></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info arrow-btn up-btn" title="上移"><i class="bi bi-arrow-up-circle-fill"></i></button>
+                    <button class="btn btn-sm btn-outline-info arrow-btn down-btn" title="下移"><i class="bi bi-arrow-down-circle-fill"></i></button>
+                    <button class="btn btn-sm btn-outline-danger remove-btn" data-ingredient-id="${item.ingredient_id}" title="移除"><i class="bi bi-x-circle-fill"></i></button>
+                </td>
+            `;
             ingredientsTableBody.appendChild(newRow);
         });
         setupInputEventListeners(ingredientsTableBody);
@@ -164,7 +349,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let rawTotals = {
             calories_kcal: 0, protein_g: 0, fat_g: 0, carbohydrate_g: 0,
             saturated_fat_g: 0, trans_fat_g: 0, sugar_g: 0, sodium_mg: 0,
-            total_weight_g: 0, total_cost: 0 // 新增 total_cost
+            total_weight_g: 0, total_cost: 0
         };
         recipeState.ingredients.forEach(item => {
             const quantity = parseFloat(item.quantity_g) || 0;
@@ -179,25 +364,24 @@ document.addEventListener('DOMContentLoaded', function() {
             rawTotals.sugar_g += (item.details.sugar_g || 0) * scale;
             rawTotals.sodium_mg += (item.details.sodium_mg || 0) * scale;
             rawTotals.total_weight_g += quantity;
-            // 計算成本： 食譜項目重量(g) / 100g * 每100g成本
-            rawTotals.total_cost += ((item.details.cost_per_unit || 0) / 100.0) * quantity; // 新增成本計算
+            rawTotals.total_cost += ((item.details.cost_per_unit || 0) / 100.0) * quantity;
         });
 
         totalWeightDiv.innerHTML = `<strong>原料總重: ${rawTotals.total_weight_g.toFixed(1)} 公克</strong>`;
-        totalCostDiv.innerHTML = `<strong>食譜總成本: NT$ ${rawTotals.total_cost.toFixed(2)}</strong>`; // 顯示食譜總成本
+        totalCostDiv.innerHTML = `<strong>食譜總成本: NT$ ${rawTotals.total_cost.toFixed(2)}</strong>`;
 
         const finalWeight = parseFloat(finalWeightInput.value) || rawTotals.total_weight_g;
         const servingsCount = parseInt(servingsCountInput.value) || 1;
         const servingWeight = (finalWeight > 0 && servingsCount > 0) ? (finalWeight / servingsCount) : 0;
         if (finalWeight <= 0) {
-            previewDiv.innerHTML = '<h2>營養標示 (預覽)</h2><p>請先加入食材或設定烘焙後總重以計算營養成分。</p>';
+            previewDiv.innerHTML = '<div class="alert alert-info text-center mt-3"><h2>營養標示 (預覽)</h2><p>請先加入食材或設定烘焙後總重以計算營養成分。</p></div>';
             if(printPreviewButton) printPreviewButton.style.display = 'none';
             return;
         }
         if(printPreviewButton) printPreviewButton.style.display = 'block';
         const density = {};
         for (const key in rawTotals) {
-            if (key !== 'total_cost' && finalWeight > 0) { // 成本不是密度，不參與這裡的密度計算
+            if (key !== 'total_cost' && finalWeight > 0) {
                 density[key] = rawTotals[key] / finalWeight;
             } else if (key !== 'total_cost') {
                 density[key] = 0;
@@ -213,12 +397,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // --- 根據勾選的選項來動態生成營養標示表格 ---
         const showNutrients = recipeState.label_options.show_nutrients || {};
         let nutritionTableHtml = `
-            <h2 style="text-align:center;">營養標示</h2>
-            <table class="nutrition-table">
+            <h2 class="text-center text-primary mb-3">營養標示</h2>
+            <table class="nutrition-table table table-sm table-bordered">
                 <thead>
-                    <tr><td colspan="3" style="text-align: left;">每一份量 ${servingWeight.toFixed(1)} 公克</td></tr>
-                    <tr><td colspan="3" style="text-align: left; border-bottom: 2px solid black;">本包裝含 ${servingsCount} 份</td></tr>
-                    <tr class="header-row"><th></th><th style="text-align:right;">每份</th><th style="text-align:right;">每100公克</th></tr>
+                    <tr><td colspan="3" class="text-start">每一份量 ${servingWeight.toFixed(1)} 公克</td></tr>
+                    <tr><td colspan="3" class="text-start" style="border-bottom: 2px solid black;">本包裝含 ${servings_count} 份</td></tr>
+                    <tr class="header-row"><th></th><th class="text-end">每份</th><th class="text-end">每100公克</th></tr>
                 </thead>
                 <tbody>
         `;
@@ -240,17 +424,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const indentNutrients = ['saturated_fat_g', 'trans_fat_g', 'sugar_g'];
 
         nutrientOrder.forEach((key, index) => {
-            if (showNutrients[key] !== false) { // 預設為 True，只有明確設定為 false 才不顯示
+            // 預設為 True，只有明確設定為 false 才不顯示
+            if (showNutrients[key] !== false && (perServing[key] !== undefined && per100g[key] !== undefined)) { 
                 const isIndented = indentNutrients.includes(key) ? 'nutrient-name-indent' : '';
-                const noBorderBottom = (index === nutrientOrder.length - 1) ? 'no-border-bottom' : '';
+                const noBorderBottomClass = (index === nutrientOrder.length - 1) ? 'no-border-bottom' : '';
                 const unit = (key === 'calories_kcal') ? '大卡' : (key === 'sodium_mg' ? '毫克' : '公克');
-                const fixed = (key === 'sodium_mg') ? 0 : 1; // 鈉保留0位小數，其他1位
+                const fixed = (key === 'sodium_mg') ? 0 : 1;
 
                 nutritionTableHtml += `
-                    <tr class="${noBorderBottom}">
+                    <tr class="${noBorderBottomClass}">
                         <th class="${isIndented}">${nutrientNames[key]}</th>
-                        <td style="text-align:right;">${perServing[key].toFixed(fixed)} ${unit}</td>
-                        <td style="text-align:right;">${per100g[key].toFixed(fixed)} ${unit}</td>
+                        <td class="text-end">${perServing[key].toFixed(fixed)} ${unit}</td>
+                        <td class="text-end">${per100g[key].toFixed(fixed)} ${unit}</td>
                     </tr>
                 `;
             }
@@ -258,7 +443,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         nutritionTableHtml += `</tbody></table>`;
         previewDiv.innerHTML = nutritionTableHtml;
-        // --- 結束動態生成營養標示表格 ---
     }
     
     function calculateServingWeight() {
@@ -271,7 +455,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function addIngredientToState(ingredientData) {
         if (recipeState.ingredients.some(item => item.ingredient_id == ingredientData.id)) { alert('這個食材已經在列表中了！'); return; }
-        // 確保將 cost_per_unit 和 unit_name 加入到 details 中
         recipeState.ingredients.push({
             ingredient_id: ingredientData.id,
             ingredient_name: ingredientData.name,
@@ -281,8 +464,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 fat_g: ingredientData.fat_g, saturated_fat_g: ingredientData.saturated_fat_g,
                 trans_fat_g: ingredientData.trans_fat_g, carbohydrate_g: ingredientData.carbohydrate_g,
                 sugar_g: ingredientData.sugar_g, sodium_mg: ingredientData.sodium_mg,
-                cost_per_unit: ingredientData.cost_per_unit, // 新增
-                unit_name: ingredientData.unit_name // 新增
+                cost_per_unit: ingredientData.cost_per_unit,
+                unit_name: ingredientData.unit_name
             }
         });
         updateAll();
@@ -307,26 +490,42 @@ document.addEventListener('DOMContentLoaded', function() {
     function performSearch() {
         const query = searchBox.value.trim();
         const source = sourceFilter.value;
-        if (!query && source === 'ALL') { searchResultsDiv.innerHTML = ''; return; }
-        fetch(`/recipes/api/search_ingredients?q=${query}&source=${source}`).then(response => response.json()).then(data => {
-            searchResultsDiv.innerHTML = '';
-            if (data.length > 0) {
-                data.forEach(ingredient => { const resultItem = document.createElement('div'); resultItem.textContent = ingredient.name; resultItem.className = 'result-item'; resultItem.addEventListener('click', () => addIngredientToState(ingredient)); searchResultsDiv.appendChild(resultItem); });
-            } else if (query) {
-                const createBtn = document.createElement('button'); createBtn.textContent = `+ 新增「${query}」為自訂食材`; createBtn.className = 'action-btn'; createBtn.style.cssText = 'width:auto; background-color:#007bff; color:white;'; createBtn.addEventListener('click', () => openAddModal(query)); searchResultsDiv.appendChild(createBtn);
-            }
-        });
+        if (!query && source === 'ALL') { searchResultsDiv.innerHTML = '<p class="text-muted p-2 text-center">請輸入關鍵字搜尋。</p>'; return; }
+        fetch(`/recipes/api/search_ingredients?q=${query}&source=${source}`)
+            .then(response => response.json())
+            .then(data => {
+                searchResultsDiv.innerHTML = '';
+                if (data.length > 0) {
+                    data.forEach(ingredient => {
+                        const resultItem = document.createElement('div');
+                        resultItem.textContent = ingredient.name;
+                        resultItem.className = 'list-group-item list-group-item-action';
+                        resultItem.addEventListener('click', () => addIngredientToState(ingredient));
+                        searchResultsDiv.appendChild(resultItem);
+                    });
+                } else if (query) {
+                    const createBtn = document.createElement('button');
+                    createBtn.textContent = `+ 新增「${query}」為自訂食材`;
+                    createBtn.className = 'btn btn-info mt-3 w-100';
+                    createBtn.addEventListener('click', () => openAddModal(query));
+                    searchResultsDiv.appendChild(createBtn);
+                } else {
+                    searchResultsDiv.innerHTML = '<p class="text-muted p-2 text-center">沒有找到符合條件的食材。</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error searching ingredients:', error);
+                searchResultsDiv.innerHTML = '<p class="text-danger p-2 text-center">搜尋食材時發生錯誤。</p>';
+            });
     }
 
     function openAddModal(prefilledName) {
         modalFormContainer.innerHTML = formTemplate;
         document.getElementById('modal_food_name').value = prefilledName;
-        modal.style.display = 'block';
+        addIngredientModal.show();
         setupInputEventListeners(modalFormContainer);
     }
 
-    function closeModal() { modal.style.display = 'none'; }
-    
     function initializePage() {
         servingWeightInput.value = recipeState.serving_weight_g;
         servingsCountInput.value = recipeState.servings_count;
@@ -334,8 +533,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (recipeState.label_options) {
             const savedNutrients = recipeState.label_options.show_nutrients || {};
             const savedAllergens = recipeState.label_options.allergens || [];
-            labelOptionsContainer.querySelectorAll('.label-option-nutrient').forEach(checkbox => { checkbox.checked = savedNutrients[checkbox.value] !== false; });
-            labelOptionsContainer.querySelectorAll('.allergen-option').forEach(checkbox => { checkbox.checked = savedAllergens.includes(checkbox.value); });
+            labelOptionsContainer.querySelectorAll('.label-option-nutrient').forEach(checkbox => {
+                checkbox.checked = savedNutrients[checkbox.value] !== false;
+                checkbox.id = `nutrient-${checkbox.value}`;
+                checkbox.nextElementSibling.setAttribute('for', `nutrient-${checkbox.value}`);
+            });
+            labelOptionsContainer.querySelectorAll('.allergen-option').forEach(checkbox => {
+                checkbox.checked = savedAllergens.includes(checkbox.value);
+                checkbox.id = `allergen-${checkbox.value}`;
+                checkbox.nextElementSibling.setAttribute('for', `allergen-${checkbox.value}`);
+            });
         } else {
              labelOptionsContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => { checkbox.checked = true; });
         }
@@ -347,72 +554,52 @@ document.addEventListener('DOMContentLoaded', function() {
     ingredientsTableBody.addEventListener('input', function(event) { if (event.target.classList.contains('weight-input')) { const ingredientIdToUpdate = parseInt(event.target.getAttribute('data-ingredient-id')); const newQuantity = parseFloat(event.target.value) || 0; const item = recipeState.ingredients.find(i => i.ingredient_id == ingredientIdToUpdate); if(item) { item.quantity_g = newQuantity; } calculateAndDisplayNutrition(); } });
     ingredientsTableBody.addEventListener('click', function(event) {
         const target = event.target;
-        const row = target.closest('tr');
-        if (!row) return;
-        if (target.classList.contains('remove-btn')) {
-            const ingredientIdToRemove = parseInt(target.getAttribute('data-ingredient-id'));
+        const button = target.closest('button'); 
+
+        if (!button) return;
+
+        if (button.classList.contains('remove-btn')) {
+            const ingredientIdToRemove = parseInt(button.getAttribute('data-ingredient-id'));
             if (confirm(`您確定要移除嗎？`)) { recipeState.ingredients = recipeState.ingredients.filter(item => item.ingredient_id != ingredientIdToRemove); updateAll(); }
-        } else if (target.classList.contains('up-btn')) {
+        } else if (button.classList.contains('up-btn')) {
+            const row = button.closest('tr');
             const prevRow = row.previousElementSibling;
             if (prevRow) { ingredientsTableBody.insertBefore(row, prevRow); updateStateOrder(); }
-        } else if (target.classList.contains('down-btn')) {
+        } else if (button.classList.contains('down-btn')) {
+            const row = button.closest('tr');
             const nextRow = row.nextElementSibling;
             if (nextRow) { ingredientsTableBody.insertBefore(nextRow, row); updateStateOrder(); }
         }
     });
 
-    // 預覽/列印標籤按鈕的點擊事件
-    printPreviewButton.addEventListener('click', function(event) {
-        event.preventDefault(); // 阻止默認的跳轉行為
-        updateStateFromUI(); // 確保 recipeState 包含最新的數據
-
-        // 呼叫後端新的 API 來獲取預覽文字
-        fetch(`/recipes/api/recipe/preview_label`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(recipeState) // 發送當前的 recipeState
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                // 將獲取到的預覽文字填充到一個隱藏表單中
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = this.href; // 使用原始連結的 href 作為 action
-                form.target = '_blank'; // 在新視窗打開
-
-                for (const key in data) {
-                    if (key !== 'status') { // 排除 status 欄位
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = key;
-                        input.value = data[key];
-                        form.appendChild(input);
-                    }
-                }
-                document.body.appendChild(form);
-                form.submit();
-                document.body.removeChild(form); // 提交後移除表單
-            } else {
-                alert('預覽標籤失敗: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching preview data:', error);
-            alert('預覽標籤時發生錯誤，請檢查控制台。');
-        });
-    });
-
     saveButton.addEventListener('click', function() {
-        updateStateFromUI(); // <-- Call the unified update function
-        fetch(`/recipes/api/recipe/${recipeId}/save`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(recipeState) }).then(response => response.json()).then(data => { if (data.status === 'success') { alert(data.message); window.location.reload(); } else { alert('儲存失敗: ' + data.message); } });
+        updateStateFromUI();
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>儲存中...';
+
+        fetch(`/recipes/api/recipe/${recipeId}/save`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(recipeState) })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.status === 'success') {
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error saving recipe:', error);
+                alert('儲存食譜時發生錯誤。');
+            })
+            .finally(() => {
+                saveButton.disabled = false;
+                saveButton.innerHTML = '<i class="bi bi-save me-2"></i>儲存食譜';
+            });
     });
 
     function updateStateFromUI() {
         recipeState.recipe_name = recipeNameInput.value;
-        recipeState.serving_weight_g = parseFloat(servingWeightInput.value) || 100; // 確保是數字
-        recipeState.servings_count = parseInt(servingsCountInput.value) || 1; // 確保是整數
-        recipeState.final_weight_g = parseFloat(finalWeightInput.value) || null; // 確保是數字或 null
+        recipeState.serving_weight_g = parseFloat(servingWeightInput.value) || 100;
+        recipeState.servings_count = parseInt(servingsCountInput.value) || 1;
+        recipeState.final_weight_g = parseFloat(finalWeightInput.value) || null;
         
         const showNutrients = {};
         labelOptionsContainer.querySelectorAll('.label-option-nutrient').forEach(checkbox => { showNutrients[checkbox.value] = checkbox.checked; });
@@ -436,53 +623,65 @@ document.addEventListener('DOMContentLoaded', function() {
     modalSaveButton.addEventListener('click', function() {
         const formData = {
             food_name: document.getElementById('modal_food_name').value,
-            cost_per_unit: document.getElementById('modal_cost_per_unit').value, // 新增
-            unit_name: document.getElementById('modal_unit_name').value, // 新增
+            cost_per_unit: document.getElementById('modal_cost_per_unit').value,
+            unit_name: document.getElementById('modal_unit_name').value,
             calories_kcal: document.getElementById('modal_calories_kcal').value,
-            protein_g: document.getElementById('modal_protein_g').value, fat_g: document.getElementById('modal_fat_g').value,
-            saturated_fat_g: document.getElementById('modal_saturated_fat_g').value, trans_fat_g: document.getElementById('modal_trans_fat_g').value,
-            carbohydrate_g: document.getElementById('modal_carbohydrate_g').value, sugar_g: document.getElementById('modal_sugar_g').value,
+            protein_g: document.getElementById('modal_protein_g').value,
+            fat_g: document.getElementById('modal_fat_g').value,
+            saturated_fat_g: document.getElementById('modal_saturated_fat_g').value,
+            trans_fat_g: document.getElementById('modal_trans_fat_g').value,
+            carbohydrate_g: document.getElementById('modal_carbohydrate_g').value,
+            sugar_g: document.getElementById('modal_sugar_g').value,
             sodium_mg: document.getElementById('modal_sodium_mg').value,
         };
+        modalSaveButton.disabled = true;
+        modalSaveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>儲存中...';
+
         fetch('/recipes/api/ingredient/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) })
         .then(response => response.json()).then(result => {
+            alert(`「${result.ingredient.name}」已成功新增！`);
             if (result.status === 'success') {
-                alert(`「${result.ingredient.name}」已成功新增！`);
-                closeModal();
+                addIngredientModal.hide();
                 const newIngredientData = {
                     id: result.ingredient.id, name: result.ingredient.name,
                     calories_kcal: parseFloat(formData.calories_kcal), protein_g: parseFloat(formData.protein_g),
                     fat_g: parseFloat(formData.fat_g), saturated_fat_g: parseFloat(formData.saturated_fat_g),
                     trans_fat_g: parseFloat(formData.trans_fat_g), carbohydrate_g: parseFloat(formData.carbohydrate_g),
                     sugar_g: parseFloat(formData.sugar_g), sodium_mg: parseFloat(formData.sodium_mg),
-                    cost_per_unit: parseFloat(formData.cost_per_unit), // 新增
-                    unit_name: formData.unit_name // 新增
+                    cost_per_unit: parseFloat(formData.cost_per_unit),
+                    unit_name: formData.unit_name
                 };
                 addIngredientToState(newIngredientData);
-                searchBox.value = ''; searchResultsDiv.innerHTML = '';
+                searchBox.value = '';
+                performSearch();
             } else { alert(`新增失敗: ${result.message}`); }
+        })
+        .catch(error => {
+            console.error('Error saving modal ingredient:', error);
+            alert('儲存新食材時發生錯誤。');
+        })
+        .finally(() => {
+            modalSaveButton.disabled = false;
+            modalSaveButton.innerHTML = '儲存新食材';
         });
     });
 
-    closeModalButton.addEventListener('click', closeModal);
-    window.onclick = function(event) { if (event.target == modal) { closeModal(); } }
-    searchBox.addEventListener('keyup', function(e){ setTimeout(() => performSearch(), 300) });
+    let searchTimeoutGlobal;
+    searchBox.addEventListener('keyup', function(e){ clearTimeout(searchTimeoutGlobal); searchTimeoutGlobal = setTimeout(() => performSearch(), 300) });
     sourceFilter.addEventListener('change', performSearch);
     finalWeightInput.addEventListener('input', () => { calculateServingWeight(); calculateAndDisplayNutrition(); });
     servingsCountInput.addEventListener('input', () => { calculateServingWeight(); calculateAndDisplayNutrition(); });
     
-    // 監聽營養素顯示選項的變化，並即時更新預覽
     labelOptionsContainer.querySelectorAll('.label-option-nutrient').forEach(checkbox => {
         checkbox.addEventListener('change', () => {
             const nutrientName = checkbox.value;
             recipeState.label_options = recipeState.label_options || {};
             recipeState.label_options.show_nutrients = recipeState.label_options.show_nutrients || {};
             recipeState.label_options.show_nutrients[nutrientName] = checkbox.checked;
-            calculateAndDisplayNutrition(); // 重新計算並顯示
+            calculateAndDisplayNutrition();
         });
     });
 
-    // 監聽過敏原選項的變化，並即時更新預覽
     labelOptionsContainer.querySelectorAll('.allergen-option').forEach(checkbox => {
         checkbox.addEventListener('change', () => {
             const allergenName = checkbox.value;
@@ -495,8 +694,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 recipeState.label_options.allergens = recipeState.label_options.allergens.filter(a => a !== allergenName);
             }
-            // 過敏原資訊不影響營養標示表格，這裡不需要重新計算營養標示
-            // 如果要在預覽中顯示過敏原文字，需要在 calculateAndDisplayNutrition 中處理
         });
     });
 

@@ -1,50 +1,235 @@
 <!doctype html>
 <html>
   <head>
-     <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
         
-        {% if title %}
-        <title>{{ title }} - 營養標示系統</title>
-        {% else %}
-        <title>歡迎來到營養標示系統</title>
-        {% endif %}
+    {% if title %}
+    <title>{{ title }} - 營養標示與POS系統</title>
+    {% else %}
+    <title>歡迎來到營養標示與POS系統</title>
+    {% endif %}
 
-        <link href="https://bootswatch.com/5/lumen/bootstrap.min.css" rel="stylesheet" integrity="sha384-1CmrxMRARb6aLqgBO7f4pP5d3>
+    {# 使用 Bootswatch Lumen 主題 #}
+    <link href="https://bootswatch.com/5/lumen/bootstrap.min.css" rel="stylesheet">
+    
+    {# 自定義樣式：定義莫蘭迪/馬卡龍風格的顏色變數，並應用到通用組件 #}
+    <style>
+      :root {
+        --bs-primary-light: #A0B3C9; /* 柔和的藍灰色，莫蘭迪色系 */
+        --bs-secondary-light: #C0C0C0; /* 柔和的淺灰色 */
+        --bs-success-light: #B4D7BF; /* 柔和的淺綠色 */
+        --bs-info-light: #ADD8E6;    /* 柔和的淺藍色 */
+        --bs-warning-light: #F0E68C; /* 柔和的淺黃色 */
+        --bs-danger-light: #F2B4B4;  /* 柔和的淺紅色 */
+        --bs-primary: #85A0BA; /* 深一點點的主色 */
+        --bs-success: #88CC88; /* 成功色 */
+
+        --card-border-radius: 0.75rem; /* 較大的圓角 */
+        --card-shadow: rgba(0, 0, 0, 0.08) 0px 4px 12px; /* 柔和的陰影 */
+      }
+
+      body {
+        background-color: #f5f5f5; /* 輕微的米白色背景 */
+        font-family: '微軟正黑體', 'Microsoft JhengHei', sans-serif; /* 確保中文顯示良好 */
+      }
+
+      /* 導航欄樣式調整 */
+      .navbar {
+        background-color: #FFFFFF !important; /* 確保白色背景 */
+        border-radius: var(--card-border-radius); /* 應用圓角 */
+        box-shadow: var(--card-shadow); /* 應用陰影 */
+        margin-top: 1.5rem; /* 增加頂部間距 */
+      }
+      .navbar-brand, .nav-link {
+        color: var(--bs-primary) !important; /* 統一導航文字顏色 */
+      }
+      .navbar-text {
+        color: #6c757d !important; /* 默認文字顏色 */
+      }
+      .btn-outline-secondary { /* 登出按鈕 */
+          border-color: var(--bs-secondary-light) !important;
+          color: #6c757d !important;
+      }
+      .btn-outline-secondary:hover {
+          background-color: var(--bs-secondary-light) !important;
+          color: #fff !important;
+      }
+
+      /* 通用卡片/面板樣式 */
+      .card, .border.rounded, .list-group-item, .alert {
+        border-radius: var(--card-border-radius); /* 應用圓角 */
+        box-shadow: var(--card-shadow); /* 應用陰影 */
+        border: 1px solid rgba(0, 0, 0, 0.05); /* 柔和的邊框 */
+      }
+      .alert-info {
+          background-color: var(--bs-info-light) !important;
+          border-color: var(--bs-info-light) !important;
+          color: #31708f !important; /* 更深的藍色文字 */
+      }
+      .alert-success {
+          background-color: var(--bs-success-light) !important;
+          border-color: var(--bs-success-light) !important;
+          color: #3c763d !important; /* 更深的綠色文字 */
+      }
+      .alert-secondary {
+          background-color: var(--bs-secondary-light) !important;
+          border-color: var(--bs-secondary-light) !important;
+          color: #555 !important;
+      }
+
+      /* 表單控件微調 */
+      .form-control, .form-select {
+        border-radius: 0.5rem; /* 輸入框小圓角 */
+        border-color: #ced4da; /* 柔和的邊框顏色 */
+      }
+      .form-control:focus, .form-select:focus {
+        border-color: var(--bs-primary-light); /* 聚焦時的邊框顏色 */
+        box-shadow: 0 0 0 0.25rem rgba(133, 160, 186, 0.25); /* 聚焦時的柔和陰影 */
+      }
+
+      /* 按鈕樣式調整 */
+      .btn {
+        border-radius: 0.5rem; /* 按鈕圓角 */
+        font-weight: 500; /* 字體粗細 */
+      }
+      .btn-primary {
+          background-color: var(--bs-primary) !important;
+          border-color: var(--bs-primary) !important;
+      }
+      .btn-success {
+          background-color: var(--bs-success) !important;
+          border-color: var(--bs-success) !important;
+      }
+      .btn-info {
+          background-color: var(--bs-info-light) !important;
+          border-color: var(--bs-info-light) !important;
+      }
+      .btn-outline-primary {
+          border-color: var(--bs-primary) !important;
+          color: var(--bs-primary) !important;
+      }
+      .btn-outline-primary:hover {
+          background-color: var(--bs-primary) !important;
+          color: #fff !important;
+      }
+      .btn-danger {
+          background-color: var(--bs-danger-light) !important;
+          border-color: var(--bs-danger-light) !important;
+          color: #a94442 !important; /* 更深的紅色文字 */
+      }
+      .btn-danger:hover {
+          background-color: #e0a0a0 !important;
+          border-color: #e0a0a0 !important;
+      }
+      .btn-secondary {
+          background-color: var(--bs-secondary-light) !important;
+          border-color: var(--bs-secondary-light) !important;
+          color: #fff !important;
+      }
+      .btn-secondary:hover {
+          background-color: #b0b0b0 !important;
+          border-color: #b0b0b0 !important;
+      }
+
+      /* 表格樣式 */
+      .table {
+        border-radius: var(--card-border-radius);
+        overflow: hidden; /* 確保圓角生效 */
+      }
+      .table th, .table td {
+          border-color: rgba(0, 0, 0, 0.05); /* 柔和的表格線 */
+      }
+      .table thead th {
+          background-color: #e9ecef; /* 表頭背景色 */
+          color: #495057;
+      }
+
+      .footer {
+        padding: 1.5rem 0; /* 增加底部間距 */
+        margin-top: 5rem; /* 增加與內容的距離 */
+        border-top: 1px solid #e9ecef;
+        background-color: #f8f9fa; /* 底部背景色 */
+        color: #6c757d;
+        text-align: center;
+      }
+    </style>
+    {# 引入 Bootstrap Icons CSS #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   </head>
   <body>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    {# 引入 Bootstrap JS Bundle #}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
         
-        {% block scripts %}{% endblock %}
-    <div>
-      <a href="{{ url_for('main.index') }}">首頁</a>
-      <span style="margin: 0 10px;">|</span>
+    {% block scripts %}{% endblock %} {# 用於頁面特定的 JS #}
 
-      {% if current_user.is_authenticated %}
-        <a href="{{ url_for('recipes.index') }}">我的食譜</a>
-        <a href="{{ url_for('recipes.manage_ingredients') }}">食材管理</a> <span style="margin: 0 10px;">|</span>
-        {# 新增產品管理連結 #}
-        <a href="{{ url_for('products.index') }}">產品管理</a>
-        <span style="margin: 0 10px;">|</span>
-        <span>您好, {{ current_user.username }}!</span>
-        <a href="{{ url_for('auth.logout') }}">登出</a>
-      {% else %}
-        <a href="{{ url_for('auth.login') }}">登入</a>
-        <a href="{{ url_for('auth.register') }}">註冊</a>
-      {% endif %}
+    <div class="container"> {# 主要內容容器 #}
+      <nav class="navbar navbar-expand-lg navbar-light bg-light rounded shadow-sm mt-3">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="{{ url_for('main.index') }}">營養標示與POS系統</a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('main.index') }}">首頁</a>
+              </li>
+              {% if current_user.is_authenticated %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('recipes.index') }}">我的食譜</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('recipes.manage_ingredients') }}">食材管理</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('products.index') }}">產品管理</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('pricing.index') }}">食材價格</a>
+              </li>
+              {% endif %}
+            </ul>
+            <ul class="navbar-nav">
+              {% if current_user.is_authenticated %}
+              <li class="nav-item d-flex align-items-center me-3">
+                <span class="navbar-text">您好, <strong class="text-primary">{{ current_user.username }}</strong>!</span>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link btn btn-outline-secondary btn-sm" href="{{ url_for('auth.logout') }}">登出</a>
+              </li>
+              {% else %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('auth.login') }}">登入</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('auth.register') }}">註冊</a>
+              </li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+      </nav>
     </div>
-    <hr>
     
+    <div class="container mt-4">
     {% with messages = get_flashed_messages() %}
     {% if messages %}
-    <ul style="color: green; list-style: none; padding: 0;">
-        {% for message in messages %}
-        <li><b>{{ message }}</b></li>
-        {% endfor %}
-    </ul>
+    {% for message in messages %}
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
     {% endif %}
     {% endwith %}
 
     {% block content %}{% endblock %}
+    </div>
+    <footer class="footer">
+      <div class="container">
+        <span class="text-muted">© 2025 營養標示與POS系統. All rights reserved.</span>
+      </div>
+    </footer>
   </body>
 </html>

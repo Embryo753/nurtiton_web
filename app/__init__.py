@@ -32,6 +32,10 @@ def create_app(config_class=Config):
     from app.products import bp as products_bp #
     app.register_blueprint(products_bp, url_prefix='/products') #
 
+# 新增價格調查模組藍圖
+    from app.pricing import bp as pricing_bp #
+    app.register_blueprint(pricing_bp, url_prefix='/pricing') #
+
     return app
 
 # --- 確認這行在檔案的最底部 ---
