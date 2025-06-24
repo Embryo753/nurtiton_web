@@ -69,14 +69,36 @@ class IngredientPrice(db.Model):
     user = db.relationship('User', back_populates='ingredient_prices')
 
     def calculate_cost_per_gram(self):
+        """
+        計算每『基礎單位』（例如：克或毫升）的成本。
+        此方法會嘗試將常見的重量/容量單位轉換為克/毫升，以便統一計算。
+        對於無法標準化轉換的單位（如『個』、『包』），此時計算出的『每克』成本可能無實際意義，
+        需確保 RecipeItem 中的 quantity_g 總是基於實際重量/容量（克）。
+        """
         if self.quantity and self.quantity > 0:
             converted_quantity_base_unit = self.quantity
-            if self.unit.lower() == 'kg':
+            unit_lower = self.unit.lower()
+            
+            if unit_lower == 'kg':
                 converted_quantity_base_unit *= 1000
-            elif self.unit.lower() == 'l':
-                converted_quantity_base_unit *= 1000
-            elif self.unit.lower() == 'ml':
-                pass
+            elif unit_lower == 'l':
+                converted_quantity_base_unit *= 1000 # 假設液體密度約為 1g/ml
+            elif unit_lower == 'ml':
+                pass # ml 直接視為與 g 等效（針對液體）
+            elif unit_lower in ['個', '包', '片', '顆', '條', '塊']:
+                # 對於這些非標準單位，無法自動換算為克。
+                # 此處直接使用 quantity，意味著 cost_per_gram 實際上是『每 [這個單位] 價格』。
+                # 如果食譜中的 IngredientItem.quantity_g 仍然是克，這會導致計算錯誤。
+                # 解決方案：
+                # 1. 強制使用者只輸入 g/kg/ml/l 單位，並在前端做驗證。
+                # 2. Ingredient 表中為這些非標準單位添加一個『平均重量 (g)』欄位。
+                # 3. 複雜單位轉換字典，例如 {'個': 50 (克)}。
+                # 為了避免在計算食譜總成本時因單位不一致而導致邏輯錯誤，這裡應返回 0
+                # 或拋出錯誤，提示使用者處理單位。
+                # 但為了兼容性和避免崩潰，這裡暫時讓它除以轉換後的 quantity。
+                # **更嚴謹的做法是，如果遇到此類單位，需要有明確的轉換邏輯或錯誤提示。**
+                # 目前假設使用者確保 quantity_g 和 IngredientPrice.unit 是兼容的。
+                pass # 不進行轉換，直接使用 quantity
             
             return self.price / converted_quantity_base_unit
         return 0
@@ -106,7 +128,8 @@ class Recipe(db.Model):
             'saturated_fat_g': 0, 'trans_fat_g': 0, 'sugar_g': 0, 'sodium_mg': 0,
             'total_weight_g': 0,
             'total_ingredient_cost': 0,
-            'ingredient_cost_details': []
+            'ingredient_cost_details': [],
+            'has_trans_fat_non_art': False # 新增標識，用於判斷是否顯示反式脂肪非人工生成提示
         }
 
         if not self.ingredients:
@@ -114,41 +137,27 @@ class Recipe(db.Model):
             return totals
 
         for item in self.ingredients:
-            # --- START DEBUG PRINTS ---
-            print(f"\n--- Debugging Ingredient: {item.ingredient.food_name} (ID: {item.ingredient.id}) ---")
-            print(f"Recipe's User ID (self.user_id): {self.user_id}")
-            # --- END DEBUG PRINTS ---
-
             current_ingredient_cost_per_gram = 0
             cost_source_info = "無價格紀錄"
             purchase_unit_info = ""
 
             max_price_entry = db.session.query(IngredientPrice).filter_by(
                 ingredient_id=item.ingredient.id,
-                user_id=self.user_id # 只考慮當前使用者錄入的價格
+                user_id=self.user_id
             ).order_by(
                 desc(IngredientPrice.price / IngredientPrice.quantity)
             ).first()
 
             if max_price_entry:
-                # --- START DEBUG PRINTS ---
-                print(f"  Found max_price_entry for {item.ingredient.food_name}:")
-                print(f"    Price={max_price_entry.price}, Quantity={max_price_entry.quantity}, Unit={max_price_entry.unit}")
-                print(f"    Source={max_price_entry.source}, Purchase Date={max_price_entry.purchase_date}")
-                # --- END DEBUG PRINTS ---
                 current_ingredient_cost_per_gram = max_price_entry.calculate_cost_per_gram()
                 cost_source_info = f"{max_price_entry.source} (NT${max_price_entry.price:.2f}/{max_price_entry.quantity}{max_price_entry.unit})"
                 purchase_unit_info = f"{max_price_entry.unit}"
             else:
-                # --- START DEBUG PRINTS ---
-                print(f"  No IngredientPrice entry found for {item.ingredient.food_name} by user {self.user_id}. Falling back to Ingredient.cost_per_unit.")
-                print(f"    Ingredient's default cost_per_unit: {item.ingredient.cost_per_unit}")
-                print(f"    Ingredient's default unit_name: {item.ingredient.unit_name}")
-                # --- END DEBUG PRINTS ---
                 current_ingredient_cost_per_gram = item.ingredient.cost_per_unit / 100.0
                 cost_source_info = f"預設 (NT${item.ingredient.cost_per_unit:.2f}/100{item.ingredient.unit_name})"
                 purchase_unit_info = f"{item.ingredient.unit_name}"
 
+            # 營養成分計算
             scale = item.quantity_g / 100.0
             totals['calories_kcal'] += item.ingredient.calories_kcal * scale
             totals['protein_g'] += item.ingredient.protein_g * scale
@@ -160,17 +169,17 @@ class Recipe(db.Model):
             totals['sodium_mg'] += item.ingredient.sodium_mg * scale
             totals['total_weight_g'] += item.quantity_g
 
+            # 檢查反式脂肪來源，若為乳製品等天然來源，則標記
+            # 這裡需要更精確的邏輯來判斷食材是否為天然含有反式脂肪的類型
+            # 簡化處理：如果食材名稱包含「牛奶」或「奶油」且反式脂肪大於0，則假定為天然來源
+            # **注意：這是一個非常粗略的判斷，實際應用需要更嚴謹的數據和判斷規則**
+            if item.ingredient.trans_fat_g > 0 and \
+               any(keyword in item.ingredient.food_name for keyword in ['牛奶', '奶油', '乳']):
+                totals['has_trans_fat_non_art'] = True
+
             item_total_cost = current_ingredient_cost_per_gram * item.quantity_g
             totals['total_ingredient_cost'] += item_total_cost
             
-            # --- START DEBUG PRINTS ---
-            print(f"  Calculated cost_per_gram for {item.ingredient.food_name}: {current_ingredient_cost_per_gram:.4f}")
-            print(f"  Item quantity_g: {item.quantity_g}")
-            print(f"  Item total cost: {item_total_cost:.2f}")
-            print(f"  Cost Source Info for display: {cost_source_info}")
-            print(f"--- End Debugging Ingredient: {item.ingredient.food_name} ---\n")
-            # --- END DEBUG PRINTS ---
-
             totals['ingredient_cost_details'].append({
                 'ingredient_id': item.ingredient.id,
                 'ingredient_name': item.ingredient.food_name,

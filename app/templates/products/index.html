@@ -2,47 +2,18 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-    .panel-min-height {
-        min-height: 50vh; /* 調整為視窗高度的 50% */
-    }
-    .recipe-search-result-item.active {
-        background-color: var(--bs-primary) !important;
-        border-color: var(--bs-primary) !important;
-        color: white !important;
-    }
-    .table .text-end {
-        text-align: right;
-    }
-    /* 為表單標題添加統一的下劃線 */
-    .form-section-title {
-        border-bottom: 2px solid var(--bs-primary-light); /* 更粗一點的底線 */
-        padding-bottom: 8px;
-        margin-bottom: 20px;
-        font-weight: bold; /* 加粗 */
-        color: var(--bs-primary); /* 標題顏色 */
-        font-size: 1.5rem; /* 稍微大一點 */
-    }
-    /* 將驗證錯誤訊息調整為更明顯 */
-    .form-control.is-invalid {
-        border-color: var(--bs-danger) !important;
-    }
-    .invalid-feedback {
-        display: block; /* 確保顯示 */
-        color: var(--bs-danger) !important;
-    }
-    /* 載入動畫 */
-    .spinner-border-sm {
-        width: 1rem;
-        height: 1rem;
-        border-width: .15em;
-    }
-</style>
-
 <div class="container">
     <h1 class="mb-4">{{ title }}</h1>
 
-    {# 閃現訊息已在 base.html 中處理 #}
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-info" role="alert">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
 
     <div class="row g-4 mb-4">
         <div id="left-panel" class="col-lg-4 p-3 border rounded shadow-sm panel-min-height">
@@ -129,8 +100,8 @@
                 <div id="cost-preview-section" class="p-3 bg-light rounded shadow-sm">
                     <p class="mb-1">每個產品食材成本: <strong id="per-product-ingredient-cost">NT$ 0.00</strong></p>
                     <p class="mb-1">批次食材總成本: <strong id="batch-ingredient-total-cost">NT$ 0.00</strong></p>
-                    <p class="mb-1">電費成本 (費率 {{ electricity_cost_per_kwh }} NT$/kWh): <strong id="electricity-cost">NT$ 0.00</strong></p>
-                    <p class="mb-1">人力成本 (費率 {{ labor_cost_per_hour }} NT$/hr): <strong id="labor-cost">NT$ 0.00</strong></p>
+                    <p class="mb-1">電費成本 (費率 <span id="electricity-cost-kwh-rate"></span> NT$/kWh): <strong id="electricity-cost">NT$ 0.00</strong></p>
+                    <p class="mb-1">人力成本 (費率 <span id="labor-cost-hour-rate"></span> NT$/hr): <strong id="labor-cost">NT$ 0.00</strong></p>
                     <p class="mb-1">批次總成本: <strong id="total-batch-cost">NT$ 0.00</strong></p>
                     <p class="fs-5 text-success mt-3">平均每個產品總成本: <strong id="avg-cost-per-product">NT$ 0.00</strong></p>
                 </div>
@@ -205,316 +176,22 @@
     {% endif %}
 </div>
 
+{# 在這裡定義 Jinja 變數，以便 products.js 可以訪問 #}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const recipeSearchBox = document.getElementById('recipe-search-box');
-    const recipeSearchResultsDiv = document.getElementById('recipe-search-results');
-    const selectedRecipeInfoDiv = document.getElementById('selected-recipe-info');
-    const startCreateProductBtn = document.getElementById('start-create-product-btn');
-    const productCreateFormSection = document.getElementById('product-create-form-section');
-    const noRecipeSelectedMessage = document.getElementById('no-recipe-selected-message');
-    const ingredientCostDetailsTbody = document.getElementById('ingredient-cost-details-tbody');
-    const totalIngredientCostDisplay = document.getElementById('total-ingredient-cost-display');
+    window.electricityCostPerKwh = {{ electricity_cost_per_kwh | tojson }};
+    window.laborCostPerHour = {{ labor_cost_per_hour | tojson }};
+    window.initialRecipesData = {{ all_recipes_initial_data | tojson | safe }};
 
-    // 產品表單元素
-    const productNameInput = document.getElementById('product_name');
-    const descriptionInput = document.getElementById('description');
-    const sellingPriceInput = document.getElementById('selling_price');
-    const stockQuantityInput = document.getElementById('stock_quantity');
-    const batchSizeInput = document.getElementById('batch_size');
-    const bakePowerWInput = document.getElementById('bake_power_w');
-    const bakeTimeMinInput = document.getElementById('bake_time_min');
-    const productionTimeHrInput = document.getElementById('production_time_hr');
-    const submitProductBtn = document.getElementById('submit-product-btn');
-    const submitButtonText = document.getElementById('submit-button-text');
-    const submitSpinner = document.getElementById('submit-spinner');
-
-
-    // 成本預覽元素
-    const perProductIngredientCostElem = document.getElementById('per-product-ingredient-cost');
-    const batchIngredientTotalCostElem = document.getElementById('batch-ingredient-total-cost');
-    const electricityCostElem = document.getElementById('electricity-cost');
-    const laborCostElem = document.getElementById('labor-cost');
-    const totalBatchCostElem = document.getElementById('total-batch-cost');
-    const avgCostPerProductElem = document.getElementById('avg-cost-per-product');
-
-    let selectedRecipeId = null;
-    let selectedRecipeData = null; // 儲存從 API 獲取的完整食譜數據
-    
-    // 從 Flask 模板獲取固定費率
-    const electricityCostPerKwh = {{ electricity_cost_per_kwh | tojson }};
-    const laborCostPerHour = {{ labor_cost_per_hour | tojson }};
-
-    function showLoadingState(isLoading) {
-        if (isLoading) {
-            submitProductBtn.disabled = true;
-            submitButtonText.classList.add('d-none');
-            submitSpinner.classList.remove('d-none');
-        } else {
-            submitProductBtn.disabled = false;
-            submitButtonText.classList.remove('d-none');
-            submitSpinner.classList.add('d-none');
-        }
-    }
-
-    function displayErrors(errors) {
-        // 清除所有舊的錯誤訊息
-        document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-        document.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
-
-        // 顯示新的錯誤訊息
-        for (const fieldName in errors) {
-            const inputElement = document.getElementById(fieldName);
-            if (inputElement) {
-                inputElement.classList.add('is-invalid');
-                const errorElement = document.getElementById(`error-${fieldName}`);
-                if (errorElement) {
-                    errorElement.textContent = errors[fieldName].join(', ');
-                }
-            }
-        }
-    }
-
-    function calculateAndDisplayCosts() {
-        const batchSize = parseFloat(batchSizeInput.value) || 1;
-        const bakePowerW = parseFloat(bakePowerWInput.value) || 0;
-        const bakeTimeMin = parseFloat(bakeTimeMinInput.value) || 0;
-        const productionTimeHr = parseFloat(productionTimeHrInput.value) || 0;
-
-        if (!selectedRecipeData) {
-            perProductIngredientCostElem.textContent = 'NT$ 0.00';
-            batchIngredientTotalCostElem.textContent = 'NT$ 0.00';
-            electricityCostElem.textContent = 'NT$ 0.00';
-            laborCostElem.textContent = 'NT$ 0.00';
-            totalBatchCostElem.textContent = 'NT$ 0.00';
-            avgCostPerProductElem.textContent = 'NT$ 0.00';
-            return;
-        }
-
-        const recipeServingsCount = selectedRecipeData.servings_count || 1;
-        const totalIngredientCostForRecipe = selectedRecipeData.total_ingredient_cost || 0;
-
-        // 計算每個產品的食材成本
-        const ingredientCostPerServing = totalIngredientCostForRecipe / recipeServingsCount;
-        perProductIngredientCostElem.textContent = `NT$ ${ingredientCostPerServing.toFixed(2)}`;
-
-        // 計算一個批次的食材總成本
-        const batchIngredientTotalCost = ingredientCostPerServing * batchSize;
-        batchIngredientTotalCostElem.textContent = `NT$ ${batchIngredientTotalCost.toFixed(2)}`;
-
-        // 計算電費成本 (一個批次)
-        let electricityCost = 0;
-        if (bakePowerW > 0 && bakeTimeMin > 0) {
-            const totalBakeTimeHr = bakeTimeMin / 60.0;
-            const totalElectricityKwh = (bakePowerW * totalBakeTimeHr) / 1000.0;
-            electricityCost = totalElectricityKwh * electricityCostPerKwh;
-        }
-        electricityCostElem.textContent = `NT$ ${electricityCost.toFixed(2)}`;
-
-        // 計算人力成本 (一個批次)
-        const laborCost = productionTimeHr * laborCostPerHour;
-        laborCostElem.textContent = `NT$ ${laborCost.toFixed(2)}`;
-
-        // 計算一個批次的總成本 (食材 + 電費 + 人力)
-        const totalBatchCost = batchIngredientTotalCost + electricityCost + laborCost;
-        totalBatchCostElem.textContent = `NT$ ${totalBatchCost.toFixed(2)}`;
-
-        // 計算平均每個產品的總成本
-        const avgCostPerProduct = batchSize > 0 ? totalBatchCost / batchSize : 0;
-        avgCostPerProductElem.textContent = `NT$ ${avgCostPerProduct.toFixed(2)}`;
-    }
-
-    // 監聽生產參數的變化以更新成本預覽
-    batchSizeInput.addEventListener('input', calculateAndDisplayCosts);
-    bakePowerWInput.addEventListener('input', calculateAndDisplayCosts);
-    bakeTimeMinInput.addEventListener('input', calculateAndDisplayCosts);
-    productionTimeHrInput.addEventListener('input', calculateAndDisplayCosts);
-
-    function renderRecipeSearchResults(recipes) {
-        console.log("Rendering search results. Received recipes:", recipes);
-        recipeSearchResultsDiv.innerHTML = ''; // 清空之前的搜尋結果
-        if (recipes.length > 0) {
-            recipes.forEach(recipe => {
-                const resultItem = document.createElement('div');
-                resultItem.className = 'recipe-search-result-item list-group-item list-group-item-action py-2';
-                resultItem.innerHTML = `
-                    <h6 class="mb-0 text-primary">${recipe.name}</h6>
-                    <small class="text-muted">份數: ${recipe.servings_count}, 成本: NT$ ${recipe.total_ingredient_cost.toFixed(2)}</small>
-                `;
-                resultItem.setAttribute('data-recipe-id', recipe.id);
-                resultItem.addEventListener('click', () => selectRecipe(recipe.id));
-                recipeSearchResultsDiv.appendChild(resultItem);
-            });
-        } else {
-            recipeSearchResultsDiv.innerHTML = '<p class="text-muted p-2 text-center">沒有找到符合條件的食譜。</p>';
-        }
-    }
-
-
-    function searchRecipes() {
-        const query = recipeSearchBox.value.trim();
-        // 只有在查詢字串長度足夠或查詢為空時才發送請求 (初始載入時顯示所有)
-        if (query.length < 2 && query !== "") {
-            recipeSearchResultsDiv.innerHTML = '<p class="text-muted p-2 text-center">輸入至少2個字搜尋您的食譜。</p>';
-            selectedRecipeInfoDiv.style.display = 'none';
-            productCreateFormSection.style.display = 'none';
-            noRecipeSelectedMessage.style.display = 'block';
-            selectedRecipeId = null;
-            selectedRecipeData = null;
-            calculateAndDisplayCosts();
-            return;
-        }
-
-        // 如果搜尋框為空，則直接渲染初始食譜數據，不發送 API 請求
-        if (query === "") {
-            console.log("Search query is empty, rendering initial recipes.");
-            renderRecipeSearchResults(initialRecipes); // 直接使用初始數據
-            selectedRecipeInfoDiv.style.display = 'none';
-            productCreateFormSection.style.display = 'none';
-            noRecipeSelectedMessage.style.display = 'block';
-            selectedRecipeId = null;
-            selectedRecipeData = null;
-            calculateAndDisplayCosts();
-            return;
-        }
-
-        fetch(`/products/api/search_recipes?q=${query}`)
-            .then(response => response.json())
-            .then(data => {
-                renderRecipeSearchResults(data);
-            })
-            .catch(error => {
-                console.error('Error searching recipes:', error);
-                recipeSearchResultsDiv.innerHTML = '<p class="text-danger p-2 text-center">搜尋食譜時發生錯誤。</p>';
-            });
-    }
-
-    function selectRecipe(recipeId) {
-        selectedRecipeId = recipeId;
-        // 清除所有選中狀態
-        document.querySelectorAll('.recipe-search-result-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        // 標記選中的食譜
-        document.querySelector(`.recipe-search-result-item[data-recipe-id="${recipeId}"]`).classList.add('active');
-
-        // 獲取選中食譜的詳細資訊
-        fetch(`/products/api/get_recipe_details/${recipeId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    selectedRecipeData = data;
-                    document.getElementById('selected-recipe-name').textContent = data.recipe_name;
-                    document.getElementById('selected-recipe-servings').textContent = data.servings_count;
-                    document.getElementById('selected-recipe-total-weight').textContent = data.total_weight_g.toFixed(1);
-                    document.getElementById('selected-recipe-total-ingredient-cost').textContent = `NT$ ${data.total_ingredient_cost.toFixed(2)}`;
-                    
-                    // 填充食材成本細項表格
-                    ingredientCostDetailsTbody.innerHTML = '';
-                    if (data.ingredient_cost_details && data.ingredient_cost_details.length > 0) {
-                        data.ingredient_cost_details.forEach(item => {
-                            const row = `
-                                <tr>
-                                    <td>${item.ingredient_name}</td>
-                                    <td class="text-end">${item.quantity_g.toFixed(1)}</td>
-                                    <td class="text-end">${item.cost_per_gram.toFixed(4)}</td>
-                                    <td>${item.cost_source || '無'}</td>
-                                    <td class="text-end">${item.item_total_cost.toFixed(2)}</td>
-                                </tr>
-                            `;
-                            ingredientCostDetailsTbody.innerHTML += row;
-                        });
-                    } else {
-                        ingredientCostDetailsTbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">此食譜沒有食材細項。</td></tr>';
-                    }
-                    totalIngredientCostDisplay.textContent = `NT$ ${data.total_ingredient_cost.toFixed(2)}`;
-
-
-                    selectedRecipeInfoDiv.style.display = 'block';
-                    productNameInput.value = data.recipe_name + ' (產品)';
-                    batchSizeInput.value = data.servings_count;
-
-                    calculateAndDisplayCosts();
-                } else {
-                    alert('獲取食譜詳情失敗: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching recipe details:', error);
-                alert('獲取食譜詳情時發生錯誤。');
-            });
-    }
-
-    startCreateProductBtn.addEventListener('click', function() {
-        if (selectedRecipeId) {
-            noRecipeSelectedMessage.style.display = 'none';
-            productCreateFormSection.style.display = 'block';
-            productCreateFormSection.scrollIntoView({ behavior: 'smooth' });
-        } else {
-            alert('請先從左側選擇一個食譜！');
-        }
+    // 在這裡顯示費率，確保其在 DOM 載入時就顯示
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('electricity-cost-kwh-rate').textContent = window.electricityCostPerKwh.toFixed(2);
+        document.getElementById('labor-cost-hour-rate').textContent = window.laborCostPerHour.toFixed(2);
     });
-
-    submitProductBtn.addEventListener('click', function() {
-        if (!selectedRecipeId) {
-            alert('請先選擇一個食譜來建立產品！');
-            return;
-        }
-
-        const formData = {
-            recipe_id: selectedRecipeId,
-            product_name: productNameInput.value,
-            description: descriptionInput.value,
-            selling_price: sellingPriceInput.value,
-            stock_quantity: stockQuantityInput.value,
-            batch_size: batchSizeInput.value,
-            bake_power_w: bakePowerWInput.value,
-            bake_time_min: bakeTimeMinInput.value,
-            production_time_hr: productionTimeHrInput.value
-        };
-
-        showLoadingState(true); // 顯示載入狀態
-        displayErrors({}); // 清除所有錯誤
-
-        fetch('/products/api/create_product', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            showLoadingState(false); // 隱藏載入狀態
-            if (data.status === 'success') {
-                alert(data.message);
-                window.location.reload();
-            } else {
-                alert('建立產品失敗: ' + data.message);
-                if (data.errors) {
-                    displayErrors(data.errors);
-                }
-            }
-        })
-        .catch(error => {
-            showLoadingState(false); // 隱藏載入狀態
-            console.error('Error submitting product:', error);
-            alert('提交產品時發生錯誤。');
-        });
-    });
-
-    let searchTimeout;
-    recipeSearchBox.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        if (this.value.trim() === "") {
-            searchRecipes();
-        } else {
-            searchTimeout = setTimeout(searchRecipes, 300);
-        }
-    });
-
-    const initialRecipes = {{ all_recipes_initial_data | tojson }};
-    console.log("Initial Recipes Data:", initialRecipes);
-    renderRecipeSearchResults(initialRecipes);
-
-});
 </script>
-{% endblock %}
+
+{# 引入分離後的 JavaScript 檔案 #}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/products.js') }}"></script>
+{% endblock scripts %}
+
+{% endblock content %}

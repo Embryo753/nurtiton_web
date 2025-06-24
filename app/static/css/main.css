@@ -1,0 +1,272 @@
+/* app/static/css/main.css */
+
+/* --- 全局變數和通用樣式 (從 base.html 複製過來) --- */
+:root {
+  --bs-primary-light: #A0B3C9; /* 柔和的藍灰色，莫蘭迪色系 */
+  --bs-secondary-light: #C0C0C0; /* 柔和的淺灰色 */
+  --bs-success-light: #B4D7BF; /* 柔和的淺綠色 */
+  --bs-info-light: #ADD8E6;    /* 柔和的淺藍色 */
+  --bs-warning-light: #F0E68C; /* 柔和的淺黃色 */
+  --bs-danger-light: #F2B4B4;  /* 柔和的淺紅色 */
+  --bs-primary: #85A0BA; /* 深一點點的主色 */
+  --bs-success: #88CC88; /* 成功色 */
+
+  --card-border-radius: 0.75rem; /* 較大的圓角 */
+  --card-shadow: rgba(0, 0, 0, 0.08) 0px 4px 12px; /* 柔和的陰影 */
+}
+
+body {
+  background-color: #f5f5f5; /* 輕微的米白色背景 */
+  font-family: '微軟正黑體', 'Microsoft JhengHei', sans-serif; /* 確保中文顯示良好 */
+}
+
+/* 導航欄樣式調整 */
+.navbar {
+  background-color: #FFFFFF !important; /* 確保白色背景 */
+  border-radius: var(--card-border-radius); /* 應用圓角 */
+  box-shadow: var(--card-shadow); /* 應用陰影 */
+  margin-top: 1.5rem; /* 增加頂部間距 */
+}
+.navbar-brand, .nav-link {
+  color: var(--bs-primary) !important; /* 統一導航文字顏色 */
+}
+.navbar-text {
+  color: #6c757d !important; /* 默認文字顏色 */
+}
+.btn-outline-secondary { /* 登出按鈕 */
+    border-color: var(--bs-secondary-light) !important;
+    color: #6c757d !important;
+}
+.btn-outline-secondary:hover {
+    background-color: var(--bs-secondary-light) !important;
+    color: #fff !important;
+}
+
+/* 通用卡片/面板樣式 */
+.card, .border.rounded, .list-group-item, .alert {
+  border-radius: var(--card-border-radius); /* 應用圓角 */
+  box-shadow: var(--card-shadow); /* 應用陰影 */
+  border: 1px solid rgba(0, 0, 0, 0.05); /* 柔和的邊框 */
+}
+.alert-info {
+    background-color: var(--bs-info-light) !important;
+    border-color: var(--bs-info-light) !important;
+    color: #31708f !important; /* 更深的藍色文字 */
+}
+.alert-success {
+    background-color: var(--bs-success-light) !important;
+    border-color: var(--bs-success-light) !important;
+    color: #3c763d !important; /* 更深的綠色文字 */
+}
+.alert-secondary {
+    background-color: var(--bs-secondary-light) !important;
+    border-color: var(--bs-secondary-light) !important;
+    color: #555 !important;
+}
+
+/* 表單控件微調 */
+.form-control, .form-select {
+  border-radius: 0.5rem; /* 輸入框小圓角 */
+  border-color: #ced4da; /* 柔和的邊框顏色 */
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--bs-primary-light); /* 聚焦時的邊框顏色 */
+  box-shadow: 0 0 0 0.25rem rgba(133, 160, 186, 0.25); /* 聚焦時的柔和陰影 */
+}
+
+/* 按鈕樣式調整 */
+.btn {
+  border-radius: 0.5rem; /* 按鈕圓角 */
+  font-weight: 500; /* 字體粗細 */
+}
+.btn-primary {
+    background-color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+}
+.btn-success {
+    background-color: var(--bs-success) !important;
+    border-color: var(--bs-success) !important;
+}
+.btn-info {
+    background-color: var(--bs-info-light) !important;
+    border-color: var(--bs-info-light) !important;
+}
+.btn-outline-primary {
+    border-color: var(--bs-primary) !important;
+    color: var(--bs-primary) !important;
+}
+.btn-outline-primary:hover {
+    background-color: var(--bs-primary) !important;
+    color: #fff !important;
+}
+.btn-danger {
+    background-color: var(--bs-danger-light) !important;
+    border-color: var(--bs-danger-light) !important;
+    color: #a94442 !important; /* 更深的紅色文字 */
+}
+.btn-danger:hover {
+    background-color: #e0a0a0 !important;
+    border-color: #e0a0a0 !important;
+}
+.btn-secondary {
+    background-color: var(--bs-secondary-light) !important;
+    border-color: var(--bs-secondary-light) !important;
+    color: #fff !important;
+}
+.btn-secondary:hover {
+    background-color: #b0b0b0 !important;
+    border-color: #b0b0b0 !important;
+}
+
+/* 表格樣式 */
+.table {
+  border-radius: var(--card-border-radius);
+  overflow: hidden; /* 確保圓角生效 */
+}
+.table th, .table td {
+    border-color: rgba(0, 0, 0, 0.05); /* 柔和的表格線 */
+}
+.table thead th {
+    background-color: #e9ecef; /* 表頭背景色 */
+    color: #495057;
+}
+
+.footer {
+  padding: 1.5rem 0; /* 增加底部間距 */
+  margin-top: 5rem; /* 增加與內容的距離 */
+  border-top: 1px solid #e9ecef;
+  background-color: #f8f9fa; /* 底部背景色 */
+  color: #6c757d;
+  text-align: center;
+}
+
+/* --- 頁面特定通用樣式 --- */
+.panel-min-height {
+    min-height: 50vh; /* 調整為視窗高度的 50%，適用於多數三欄佈局 */
+}
+
+.list-group-item.active {
+    background-color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+    color: white !important;
+}
+.table .text-end { /* 表格內數字右對齊 */
+    text-align: right;
+}
+/* 統一的表單標題下劃線 */
+.form-section-title {
+    border-bottom: 2px solid var(--bs-primary-light);
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    color: var(--bs-primary);
+    font-size: 1.5rem;
+}
+/* 表單驗證錯誤訊息 */
+.form-control.is-invalid {
+    border-color: var(--bs-danger) !important;
+}
+.invalid-feedback {
+    display: block;
+    color: var(--bs-danger) !important;
+}
+/* 載入動畫 */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: .15em;
+}
+
+/* --- recipes/recipe_detail.html 獨有或覆蓋樣式 --- */
+.weight-input {
+    width: 80px;
+    text-align: right;
+    display: inline-block;
+}
+.remove-btn, .arrow-btn {
+    margin-left: 0.5rem;
+}
+.remove-btn {
+    color: var(--bs-danger);
+    font-weight: bold;
+    cursor: pointer;
+}
+.arrow-btn {
+    color: var(--bs-info);
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+}
+.action-btn {
+    width: 100%;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+.action-btn:disabled {
+    background-color: var(--bs-secondary-light) !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+.modal-content {
+    border-radius: var(--card-border-radius);
+    box-shadow: var(--card-shadow);
+}
+.modal-header {
+    border-bottom: none;
+}
+.modal-footer {
+    border-top: none;
+}
+.modal-form-input { /* 注意：這個樣式可能已經被 form-control 覆蓋，但保留以防萬一 */
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+.nutrition-table { /* 營養標示表格樣式 */
+    border: 1px solid var(--bs-secondary-light);
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 450px;
+    margin-top: 1rem;
+    border-radius: var(--card-border-radius);
+    overflow: hidden;
+}
+.nutrition-table th, .nutrition-table td {
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+.nutrition-table thead {
+    background-color: #e9ecef;
+    color: #495057;
+}
+.nutrition-table .nutrient-name-indent {
+    padding-left: 1.5rem;
+}
+.no-border-bottom {
+    border-bottom: none !important;
+}
+
+/* --- recipes/manage_ingredients.html 獨有或覆蓋樣式 --- */
+.form-row-compact .col-form-label {
+    padding-top: calc(0.375rem + 1px);
+    padding-bottom: calc(0.375rem + 1px);
+    margin-bottom: 0;
+    text-align: right;
+    padding-right: 1rem;
+}
+/* 針對 manage_ingredients 頁面，左側面板的高度可能需要比 product 頁面更高 */
+#left-panel.manage-ingredients-panel {
+    min-height: 70vh;
+}
+#search-results.manage-ingredients-results {
+    max-height: calc(70vh - 150px);
+}
+
+/* --- recipes/label.html 獨有樣式 --- */
+/* 這些樣式比較特殊，且主要用於打印，可以保留在 label.html 內部 */
+/* 為了避免污染全局樣式且其樣式確實特殊，目前 label.html 的 <style> 標籤維持在自身內部。 */
+/* 儘管如此，也應確保其顏色變數與 main.css 中的定義一致 */
+.label-wrapper {
+    /* 這裡可以從 label.html 中複製過來，但應注意上下文 */
+}

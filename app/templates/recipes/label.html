@@ -112,16 +112,18 @@
                 <p><strong>成分：</strong>{{ final_texts.ingredients }}</p>
                 <p><strong>淨重：</strong>{{ final_texts.net_weight }}</p>
                 <p><strong>保存方式：</strong>冷凍於-18°C以下</p>
-                <p><strong>保存期限：：</strong>冷凍-18°C以下保存30天</p>
+                <p><strong>保存期限：</strong>冷凍-18°C以下保存30天</p>
                 <p><strong>製造日期：</strong></p>
                 <p><strong>賞味期限：</strong></p>
                 <p><strong>產地：</strong>台灣</p>
                 <hr style="border-top: 1px dashed rgba(0,0,0,0.1);">
                 <div class="footer-notes">
                     {% if final_texts.allergens %}<p>● <strong>過敏原資訊：</strong>{{ final_texts.allergens }}</p>{% endif %}
-                    {# 反式脂肪判斷需要從後端計算數據中獲取，這裡 final_texts 是預格式化文本，需要調整邏輯或預先判斷 #}
-                    {# 這裡需要從 per_100g 數據獲取，而不是從 final_texts #}
-                    {% if per_100g.trans_fat_g is defined and per_100g.trans_fat_g > 0 %}<p>● 反式脂肪非人工生成，為乳製品中天然存在。</p>{% endif %}
+                    {# 根據 recipe_calculated_data.has_trans_fat_non_art 判斷是否顯示反式脂肪提示 #}
+                    {# 注意：recipe_calculated_data 必須從 routes.py 傳遞過來，如果沒有，這裡會報錯 #}
+                    {% if recipe_calculated_data is defined and recipe_calculated_data.has_trans_fat_non_art %}
+                    <p>● 反式脂肪非人工生成，為乳製品中天然存在。</p>
+                    {% endif %}
                     <p>● 本產品已投保南山產物產品責任險1,000萬。</p>
                 </div>
             </div>
