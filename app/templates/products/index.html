@@ -5,191 +5,76 @@
 <div class="container">
     <h1 class="mb-4">{{ title }}</h1>
 
-    {% with messages = get_flashed_messages() %}
-    {% if messages %}
-        {% for message in messages %}
-        <div class="alert alert-info" role="alert">
-            {{ message }}
-        </div>
-        {% endfor %}
-    {% endif %}
-    {% endwith %}
-
-    <div class="row g-4 mb-4">
-        <div id="left-panel" class="col-lg-4 p-3 border rounded shadow-sm panel-min-height">
-            <h3 class="mb-3 text-primary">建立新產品</h3>
-            <p class="text-muted"><strong>選擇食譜作為基礎：</strong></p>
-            <input type="search" id="recipe-search-box" class="form-control mb-3" placeholder="搜尋食譜名稱...">
-            <div id="recipe-search-results" class="list-group" style="max-height: calc(50vh - 120px); overflow-y: auto;">
-                <p class="text-muted p-2 text-center">載入食譜中...</p>
-            </div>
-            <hr class="my-3">
-            <div id="selected-recipe-info" class="mt-3 p-3 border rounded bg-light" style="display: none;">
-                <h5 class="text-primary mb-2">已選擇食譜: <strong id="selected-recipe-name"></strong></h5>
-                <p class="mb-1">食譜份數: <span class="badge bg-info text-dark fs-6" id="selected-recipe-servings"></span> 份</p>
-                <p class="mb-1">食譜總重量: <span class="badge bg-light text-dark fs-6" id="selected-recipe-total-weight"></span> 克</p>
-                <p class="mb-3">食譜食材總成本: <span class="badge bg-light text-dark fs-6" id="selected-recipe-total-ingredient-cost"></span></p>
-                <button id="start-create-product-btn" class="btn btn-primary w-100">
-                    <i class="bi bi-box-seam me-2"></i>建立此產品
-                </button>
+    <div class="d-flex flex-column flex-lg-row gap-4">
+        {# 左側面板：顯示產品列表 #}
+        <div id="left-panel" class="col-lg-3 p-3 border rounded shadow-sm panel-min-height">
+            <h3 class="mb-3 text-primary">我的產品</h3>
+            <input type="search" id="product-search-box" class="form-control mb-3" placeholder="搜尋您的產品...">
+            <div id="product-list" class="list-group" style="max-height: calc(70vh - 150px); overflow-y: auto;">
+                {# 產品列表將由 JavaScript 動態載入 #}
             </div>
         </div>
 
-        <div id="center-panel" class="col-lg-8 p-3 border rounded shadow-sm panel-min-height">
-            <h3 class="mb-3">產品資料與成本計算</h3>
-            <div id="product-create-form-section" style="display: none;">
-                <h4 class="form-section-title">產品基本資訊</h4>
-                <div class="mb-3">
-                    {{ form.product_name.label(class="form-label") }}
-                    {{ form.product_name(class="form-control") }}
-                    <div class="invalid-feedback" id="error-product_name"></div>
-                </div>
-                <div class="mb-3">
-                    {{ form.description.label(class="form-label") }}
-                    {{ form.description(class="form-control", rows=3) }}
-                    <div class="invalid-feedback" id="error-description"></div>
-                </div>
-                
-                <h4 class="form-section-title">生產參數</h4>
-                <div class="mb-3">
-                    {{ form.batch_size.label(class="form-label") }}
-                    {{ form.batch_size(class="form-control", min=1) }}
-                    <div class="invalid-feedback" id="error-batch_size"></div>
-                </div>
-                <div class="mb-3">
-                    {{ form.bake_power_w.label(class="form-label") }}
-                    {{ form.bake_power_w(class="form-control", min=0, step="0.01") }}
-                    <div class="invalid-feedback" id="error-bake_power_w"></div>
-                </div>
-                <div class="mb-3">
-                    {{ form.bake_time_min.label(class="form-label") }}
-                    {{ form.bake_time_min(class="form-control", min=0, step="0.01") }}
-                    <div class="invalid-feedback" id="error-bake_time_min"></div>
-                </div>
-                <div class="mb-3">
-                    {{ form.production_time_hr.label(class="form-label") }}
-                    {{ form.production_time_hr(class="form-control", min=0, step="0.01") }}
-                    <div class="invalid-feedback" id="error-production_time_hr"></div>
-                </div>
+        {# 中間面板：編輯產品表單 #}
+        <div id="center-panel" class="col-lg-6 p-3 border rounded shadow-sm panel-min-height">
+            <h3 id="form-title" class="mb-3 text-primary">產品資料</h3>
+            <form id="product-form" novalidate onsubmit="return false;">
+                <p class="alert alert-info text-center"><i>請從左側列表選擇一個產品來編輯，或點擊右側的「新增」按鈕。</i></p>
+            </form>
+        </div>
 
-                <h4 class="form-section-title">食材成本細項</h4>
-                <div class="table-responsive">
-                    <table class="table table-sm table-striped table-hover table-bordered cost-table">
-                        <thead>
-                            <tr>
-                                <th>食材名稱</th>
-                                <th class="text-end">用量 (克)</th>
-                                <th class="text-end">每克成本 (NT$)</th>
-                                <th>來源</th>
-                                <th class="text-end">總計 (NT$)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ingredient-cost-details-tbody">
-                            <tr><td colspan="5" class="text-muted text-center">請選擇食譜以載入食材成本細項。</td></tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <th colspan="4" class="text-end">食譜食材總成本:</th>
-                                <th id="total-ingredient-cost-display" class="text-end">NT$ 0.00</th>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-
-                <h4 class="form-section-title">總成本預覽 (每批次)</h4>
-                <div id="cost-preview-section" class="p-3 bg-light rounded shadow-sm">
-                    <p class="mb-1">每個產品食材成本: <strong id="per-product-ingredient-cost">NT$ 0.00</strong></p>
-                    <p class="mb-1">批次食材總成本: <strong id="batch-ingredient-total-cost">NT$ 0.00</strong></p>
-                    <p class="mb-1">電費成本 (費率 <span id="electricity-cost-kwh-rate"></span> NT$/kWh): <strong id="electricity-cost">NT$ 0.00</strong></p>
-                    <p class="mb-1">人力成本 (費率 <span id="labor-cost-hour-rate"></span> NT$/hr): <strong id="labor-cost">NT$ 0.00</strong></p>
-                    <p class="mb-1">批次總成本: <strong id="total-batch-cost">NT$ 0.00</strong></p>
-                    <p class="fs-5 text-success mt-3">平均每個產品總成本: <strong id="avg-cost-per-product">NT$ 0.00</strong></p>
-                </div>
-
-                <h4 class="form-section-title">產品定價與庫存</h4>
-                <div class="mb-3">
-                    {{ form.selling_price.label(class="form-label") }}
-                    {{ form.selling_price(class="form-control", min=0, step="0.01") }}
-                    <div class="invalid-feedback" id="error-selling_price"></div>
-                </div>
-                <div class="mb-3">
-                    {{ form.stock_quantity.label(class="form-label") }}
-                    {{ form.stock_quantity(class="form-control", min=0) }}
-                    <div class="invalid-feedback" id="error-stock_quantity"></div>
-                </div>
-
-                <button type="button" id="submit-product-btn" class="btn btn-success btn-lg w-100">
-                    <span id="submit-button-text"><i class="bi bi-save me-2"></i>儲存產品</span>
-                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="submit-spinner"></span>
-                </button>
-            </div>
-            <p id="no-recipe-selected-message" class="alert alert-info mt-3 text-center p-4 rounded shadow-sm">
-                <i class="bi bi-lightbulb me-2"></i>請從左側選擇一個食譜來建立產品。
-            </p>
+        {# 右側面板：操作按鈕 #}
+        <div id="right-panel" class="col-lg-3 p-3 border rounded shadow-sm panel-min-height d-flex flex-column">
+            <h3 class="mb-3 text-primary">操作</h3>
+            <button id="new-btn" class="btn btn-success mb-2">
+                <i class="bi bi-plus-lg me-2"></i>新增產品
+            </button>
+            <button id="save-btn" class="btn btn-primary mb-2" disabled>
+                <span id="save-button-text"><i class="bi bi-save me-2"></i>儲存修改</span>
+                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="save-spinner"></span>
+            </button>
+            <button id="delete-btn" class="btn btn-danger mb-2" disabled>
+                <span id="delete-button-text"><i class="bi bi-trash me-2"></i>刪除產品</span>
+                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="delete-spinner"></span>
+            </button>
+            <button id="cancel-btn" class="btn btn-secondary mb-2" disabled>
+                <i class="bi bi-x-lg me-2"></i>取消操作
+            </button>
         </div>
     </div>
-    <hr class="my-4">
-    <h3 class="mb-3">現有產品列表</h3>
-    {% if products %}
-        <div class="table-responsive">
-            <table class="table table-striped table-hover table-bordered mt-3 shadow-sm">
-                <thead>
-                    <tr>
-                        <th>產品名稱</th>
-                        <th>關聯食譜</th>
-                        <th class="text-end">成本 (NT$)</th>
-                        <th class="text-end">售價 (NT$)</th>
-                        <th class="text-end">毛利率 (%)</th>
-                        <th class="text-end">庫存</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for product in products %}
-                    <tr>
-                        <td>{{ product.product_name }}</td>
-                        <td><a href="{{ url_for('recipes.recipe_detail', recipe_id=product.recipe.id) }}" class="text-decoration-none">{{ product.recipe.recipe_name }}</a></td>
-                        <td class="text-end">{{ product.calculated_cost | round(2) }}</td>
-                        <td class="text-end">{{ product.selling_price | round(2) }}</td>
-                        <td class="text-end">{{ product.calculate_profit_margin() | round(2) }}%</td>
-                        <td class="text-end">{{ product.stock_quantity }}</td>
-                        <td>
-                            <a href="{{ url_for('products.edit_product', product_id=product.id) }}" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="bi bi-pencil me-1"></i>編輯
-                            </a>
-                            <form action="{{ url_for('products.delete_product', product_id=product.id) }}" method="post" onsubmit="return confirm('確定要刪除產品 {{ product.product_name }} 嗎？');" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-trash me-1"></i>刪除
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <div class="alert alert-secondary mt-4 text-center p-4 rounded shadow-sm">
-            <p class="mb-0">您目前還沒有建立任何產品。</p>
-            <p class="mb-0">請從左側面板選擇一個食譜來建立您的第一個產品吧！</p>
-        </div>
-    {% endif %}
 </div>
 
-{# 在這裡定義 Jinja 變數，以便 products.js 可以訪問 #}
+{# 新增產品專用的彈出視窗 (Modal) #}
+<div class="modal fade" id="create-product-modal" tabindex="-1" aria-labelledby="createProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createProductModalLabel">建立新產品 - 選擇食譜</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">請選擇一個食譜作為新產品的基礎：</p>
+                <input type="search" id="recipe-search-box" class="form-control mb-3" placeholder="搜尋食譜名稱...">
+                <div id="recipe-search-results" class="list-group" style="max-height: 40vh; overflow-y: auto;">
+                    <p class="text-muted p-2 text-center">載入食譜中...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# 將後端資料傳遞給 JavaScript #}
 <script>
+    window.allProductsInitialData = {{ all_products_initial_data | tojson | safe }};
+    window.allRecipesInitialData = {{ all_recipes_initial_data | tojson | safe }};
     window.electricityCostPerKwh = {{ electricity_cost_per_kwh | tojson }};
     window.laborCostPerHour = {{ labor_cost_per_hour | tojson }};
-    window.initialRecipesData = {{ all_recipes_initial_data | tojson | safe }};
-
-    // 在這裡顯示費率，確保其在 DOM 載入時就顯示
-    document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('electricity-cost-kwh-rate').textContent = window.electricityCostPerKwh.toFixed(2);
-        document.getElementById('labor-cost-hour-rate').textContent = window.laborCostPerHour.toFixed(2);
-    });
 </script>
 
-{# 引入分離後的 JavaScript 檔案 #}
+{# 引入 JavaScript 檔案 #}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/products.js') }}"></script>
 {% endblock scripts %}

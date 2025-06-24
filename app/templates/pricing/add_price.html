@@ -1,52 +1,14 @@
-{# app/templates/pricing/add_price.html #}
-{% extends "base.html" %}
+{# app/templates/pricing/edit_price.html #} {% extends "base.html" %} {% block content %}
+{{ title }}
+返回價格紀錄列表
 
-{% block content %}
-{# 移除了 <style> 標籤，因為樣式已分離到 main.css #}
-
-<div class="container">
-    <h1 class="mb-4">{{ title }}</h1>
-    <p class="mb-4"><a href="{{ url_for('pricing.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-2"></i>返回價格紀錄列表</a></p>
-
-    <div class="card p-4 shadow-sm">
-        <h4 class="card-title text-primary mb-3">填寫新價格紀錄</h4>
-        <form id="price-form" method="POST" novalidate>
-            {{ form.hidden_tag() }}
-            <div class="mb-3">
-                {{ form.ingredient_name.label(class="form-label") }}
-                {{ form.ingredient_name(class="form-control") }}
-                <div class="invalid-feedback" id="error-ingredient_name"></div>
-            </div>
-            <div class="mb-3">
-                {{ form.source.label(class="form-label") }}
-                {{ form.source(class="form-select") }}
-                <div class="invalid-feedback" id="error-source"></div>
-            </div>
-            <div class="mb-3">
-                {{ form.price.label(class="form-label") }}
-                {{ form.price(class="form-control", min="0.01", step="0.01") }}
-                <div class="invalid-feedback" id="error-price"></div>
-            </div>
-            <div class="mb-3">
-                {{ form.quantity.label(class="form-label") }}
-                {{ form.quantity(class="form-control", min="0.001", step="0.001") }}
-                <div class="invalid-feedback" id="error-quantity"></div>
-            </div>
-            <div class="mb-4">
-                {{ form.unit.label(class="form-label") }}
-                {{ form.unit(class="form-control") }}
-                <div class="invalid-feedback" id="error-unit"></div>
-            </div>
-            <button type="submit" class="btn btn-primary btn-lg w-100" id="submit-btn">
-                <span id="submit-btn-text"><i class="bi bi-save me-2"></i>新增價格紀錄</span>
-                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="submit-spinner"></span>
-            </button>
-        </form>
-    </div>
-</div>
-
-{# 引入分離後的 JavaScript 檔案 #}
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/add_price.js') }}"></script>
-{% endblock scripts %}
-{% endblock %}
+編輯價格紀錄
+{# 使用 form.action 來動態設定提交的 URL #}
+{{ form.hidden_tag() }}
+{{ form.ingredient_name.label(class="form-label") }} {# 讓食材名稱不可編輯，防止意外創建新食材 #} {{ form.ingredient_name(class="form-control", readonly=True) }}
+{{ form.source.label(class="form-label") }} {{ form.source(class="form-select") }}
+{{ form.price.label(class="form-label") }} {{ form.price(class="form-control", min="0.01", step="0.01") }}
+{{ form.quantity.label(class="form-label") }} {{ form.quantity(class="form-control", min="0.001", step="0.001") }}
+{{ form.unit.label(class="form-label") }} {{ form.unit(class="form-control") }}
+儲存修改
+{# --- 修改處：修正語法錯誤並引入正確的 JS 檔案 --- #} {% block scripts %} {% endblock scripts %} {% endblock %}

@@ -20,8 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function displayFormErrors(errors) {
         // 清除所有舊的錯誤訊息和無效狀態
-        document.querySelectorAll('.form-control.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-        document.querySelectorAll('.form-select.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+        document.querySelectorAll('.form-control.is-invalid, .form-select.is-invalid').forEach(el => el.classList.remove('is-invalid'));
         document.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
 
         // 顯示新的錯誤訊息
@@ -63,9 +62,11 @@ document.addEventListener('DOMContentLoaded', function() {
             price: document.getElementById('price').value,
             quantity: document.getElementById('quantity').value,
             unit: document.getElementById('unit').value,
+            // CSRF Token for Flask-WTF
+            csrf_token: document.querySelector('input[name="csrf_token"]').value
         };
 
-        fetch(form.action, { // 使用表單的 action 屬性作為請求 URL
+        fetch(form.action, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
@@ -74,20 +75,21 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.status === 'success') {
                 alert(data.message);
-                window.location.href = "{{ url_for('pricing.index') }}"; // 成功後跳轉回列表頁
+                // --- 修改處：使用後端回傳的 URL 進行跳轉 ---
+                window.location.href = data.redirect_url;
             } else {
-                alert('新增價格紀錄失敗: ' + data.message);
+                alert('新增價格紀錄失敗: ' + (data.message || '請檢查表單欄位。'));
                 if (data.errors) {
-                    displayFormErrors(data.errors); // 顯示後端返回的驗證錯誤
+                    displayFormErrors(data.errors);
                 }
             }
         })
         .catch(error => {
             console.error('Error submitting form:', error);
-            alert('提交表單時發生錯誤。');
+            alert('提交表單時發生網路或伺服器錯誤。');
         })
         .finally(() => {
-            showLoadingState(false); // 隱藏載入狀態
+            showLoadingState(false);
         });
     });
 });

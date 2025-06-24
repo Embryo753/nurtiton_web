@@ -2,35 +2,46 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container"> {# 確保整個內容在一個容器內 #}
-    <div class="d-flex justify-content-between align-items-center mb-4"> {# 增加 mb-4 #}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>{{ title }}</h1>
         <form action="{{ url_for('recipes.create_and_redirect') }}" method="POST">
              <button type="submit" class="btn btn-success btn-lg">
-                 <i class="bi bi-plus-lg me-2"></i>新增食譜 {# 添加 Bootstrap Icons #}
+                 <i class="bi bi-plus-lg me-2"></i>新增食譜
              </button>
         </form>
     </div>
 
-    {# 閃現訊息已在 base.html 中處理 #}
+    {# 閃現訊息已在 base.html 中處理，這裡可以不用再寫 #}
 
     {% if recipes %}
-        <div class="list-group shadow-sm"> {# 添加 shadow-sm #}
+        <div class="list-group shadow-sm">
             {% for recipe in recipes %}
-            <a href="{{ url_for('recipes.recipe_detail', recipe_id=recipe.id) }}" class="list-group-item list-group-item-action py-3"> {# 增加垂直 padding #}
+            {# 修改：將原本的 <a> 標籤改為 <div>，以便在內部放入不同的連結和按鈕 #}
+            <div class="list-group-item list-group-item-action py-3">
                 <div class="d-flex w-100 justify-content-between align-items-center">
-                    <h5 class="mb-1 text-primary">{{ recipe.recipe_name }}</h5> {# 讓食譜名稱更突出 #}
-                    <div>
-                        <small class="text-muted me-3">
-                            <i class="bi bi-clock me-1"></i>最後修改於: {{ recipe.updated_at.strftime('%Y-%m-%d %H:%M') if recipe.updated_at else recipe.created_at.strftime('%Y-%m-%d %H:%M') }}
-                        </small>
-                    </div>
+                    {# 左側：食譜名稱，點擊可進入編輯頁 #}
+                    <a href="{{ url_for('recipes.recipe_detail', recipe_id=recipe.id) }}" class="text-decoration-none flex-grow-1">
+                        <h5 class="mb-1 text-primary">{{ recipe.recipe_name }}</h5>
+                    </a>
+                    
+                    {# 中間：修改時間 #}
+                    <small class="text-muted mx-4">
+                        <i class="bi bi-clock me-1"></i>最後修改於: {{ recipe.updated_at.strftime('%Y-%m-%d %H:%M') if recipe.updated_at else recipe.created_at.strftime('%Y-%m-%d %H:%M') }}
+                    </small>
+
+                    {# 右側：刪除按鈕表單 #}
+                    <form action="{{ url_for('recipes.delete_recipe', recipe_id=recipe.id) }}" method="POST" onsubmit="return confirm('您確定要刪除「{{ recipe.recipe_name }}」嗎？此操作無法復原！');" class="d-inline">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-trash me-1"></i>刪除
+                        </button>
+                    </form>
                 </div>
-            </a>
+            </div>
             {% endfor %}
         </div>
     {% else %}
-        <div class="alert alert-secondary mt-5 text-center p-4"> {# 增加 padding 和置中 #}
+        <div class="alert alert-secondary mt-5 text-center p-4">
             <h4 class="alert-heading">目前沒有食譜喔！</h4>
             <p>點擊右上角的「新增食譜」按鈕，建立您的第一個食譜吧！</p>
             <hr>

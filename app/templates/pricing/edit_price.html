@@ -2,18 +2,18 @@
 {% extends "base.html" %}
 
 {% block content %}
-{# 移除了 <style> 標籤，因為樣式已分離到 main.css #}
-
 <div class="container">
     <h1 class="mb-4">{{ title }}</h1>
     <p class="mb-4"><a href="{{ url_for('pricing.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-2"></i>返回價格紀錄列表</a></p>
 
     <div class="card p-4 shadow-sm">
         <h4 class="card-title text-primary mb-3">編輯價格紀錄</h4>
-        <form id="price-form" method="POST" novalidate> {# 添加 id 和 novalidate #}
+        {# 使用 form.action 來動態設定提交的 URL #}
+        <form id="price-form" action="{{ url_for('pricing.edit_price', price_id=price_id) }}" method="POST" novalidate>
             {{ form.hidden_tag() }}
             <div class="mb-3">
                 {{ form.ingredient_name.label(class="form-label") }}
+                {# 讓食材名稱不可編輯，防止意外創建新食材 #}
                 {{ form.ingredient_name(class="form-control", readonly=True) }}
                 <div class="invalid-feedback" id="error-ingredient_name"></div>
             </div>
@@ -45,8 +45,8 @@
     </div>
 </div>
 
-{# 引入分離後的 JavaScript 檔案 #}
+{# --- 修正處：補上缺少的 ')' 和 '}}' --- #}
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/edit_price.js'
+<script src="{{ url_for('static', filename='js/edit_price.js') }}"></script>
 {% endblock scripts %}
 {% endblock %}

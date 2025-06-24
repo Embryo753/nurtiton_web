@@ -1,10 +1,11 @@
+# app/recipes/routes.py
 from flask import render_template, flash, redirect, url_for, abort, jsonify, request, current_app
 import json
 from datetime import datetime, timezone
 from app import db
 from app.recipes import bp
 from flask_login import login_required, current_user
-from app.models import Recipe, Ingredient, RecipeItem
+from app.models import Recipe, Ingredient, RecipeItem, Product # 確保 Product 被匯入
 from app.recipes.forms import RecipeForm, IngredientForm
 
 @bp.route('/')
@@ -22,6 +23,27 @@ def create_and_redirect():
     db.session.commit()
     flash('已建立新食譜，請開始編輯。')
     return redirect(url_for('recipes.recipe_detail', recipe_id=recipe.id))
+
+# --- 新增的刪除食譜路由 ---
+@bp.route('/<int:recipe_id>/delete', methods=['POST'])
+@login_required
+def delete_recipe(recipe_id):
+    recipe = Recipe.query.get_or_404(recipe_id)
+    if recipe.author != current_user:
+        abort(403) # 如果不是作者，則禁止操作
+
+    # 檢查是否有任何產品關聯到此食譜
+    linked_product = Product.query.filter_by(recipe_id=recipe.id).first()
+    if linked_product:
+        flash(f'無法刪除食譜 "{recipe.recipe_name}"，因為它已被產品 "{linked_product.product_name}" 使用。請先刪除關聯的產品。', 'danger')
+        return redirect(url_for('recipes.index'))
+    
+    recipe_name = recipe.recipe_name
+    db.session.delete(recipe)
+    db.session.commit()
+    flash(f'食譜 "{recipe_name}" 已成功刪除。', 'success')
+    return redirect(url_for('recipes.index'))
+# --- 刪除路由結束 ---
 
 @bp.route('/<int:recipe_id>')
 @login_required
@@ -46,8 +68,8 @@ def recipe_detail(recipe_id):
                 'fat_g': item.ingredient.fat_g, 'carbohydrate_g': item.ingredient.carbohydrate_g,
                 'saturated_fat_g': item.ingredient.saturated_fat_g, 'trans_fat_g': item.ingredient.trans_fat_g,
                 'sugar_g': item.ingredient.sugar_g, 'sodium_mg': item.ingredient.sodium_mg,
-                'cost_per_unit': item.ingredient.cost_per_unit, # 新增
-                'unit_name': item.ingredient.unit_name # 新增
+                'cost_per_unit': item.ingredient.cost_per_unit,
+                'unit_name': item.ingredient.unit_name
             }
         })
     return render_template('recipes/recipe_detail.html', title=f"編輯食譜: {recipe.recipe_name}", recipe=recipe, initial_state=initial_state)
@@ -60,7 +82,6 @@ def recipe_label(recipe_id):
         abort(403)
 
     if request.method == 'POST':
-        # 從前端提交的隱藏表單中，直接獲取編輯過的文字
         final_texts = {
             'product_name': request.form.get('product_name'),
             'ingredients': request.form.get('ingredients'),
@@ -68,14 +89,12 @@ def recipe_label(recipe_id):
             'nutrition': request.form.get('nutrition'),
             'allergens': request.form.get('allergens')
         }
-        # 使用這些已編輯的文字來渲染最終的標籤頁面
         return render_template(
             'recipes/label.html',
-            recipe=recipe, # 傳遞 recipe 物件，以便 template 可以訪問 recipe.recipe_name 等資訊
+            recipe=recipe,
             final_texts=final_texts
         )
     
-    # 如果是 GET 請求，維持原有功能，從資料庫即時計算
     else:
         raw_totals = recipe.calculate_nutrition()
         final_weight = recipe.final_weight_g if recipe.final_weight_g and recipe.final_weight_g > 0 else raw_totals.get('total_weight_g', 0)
@@ -85,7 +104,7 @@ def recipe_label(recipe_id):
         density = {}
         if final_weight > 0:
             for key, value in raw_totals.items():
-                if isinstance(value, (int, float)) and key != 'total_cost': # 排除 total_cost，它不是用於密度計算的營養素
+                if isinstance(value, (int, float)) and key != 'total_cost':
                     density[key] = value / final_weight
         
         per_serving = {key: val * serving_weight for key, val in density.items()}
@@ -94,7 +113,6 @@ def recipe_label(recipe_id):
         ingredients_list_sorted = sorted(recipe.ingredients, key=lambda item: item.quantity_g, reverse=True)
         ingredients_str = "、".join([item.ingredient.food_name for item in ingredients_list_sorted])
 
-        # 根據 label_options 篩選營養素並格式化
         label_options = recipe.label_options or {}
         show_options = label_options.get('show_nutrients', {
             'calories_kcal': True, 'protein_g': True, 'fat_g': True,
@@ -133,7 +151,6 @@ def recipe_label(recipe_id):
         if allergens:
             allergen_text = "本產品含有" + "、".join(allergens) + "及其製品，不適合對其過敏體質者食用。"
 
-        # 為了讓模板能統一處理，這裡也建立一個同結構的字典
         final_texts = {
             'product_name': recipe.recipe_name,
             'ingredients': ingredients_str,
@@ -145,9 +162,10 @@ def recipe_label(recipe_id):
         return render_template(
             'recipes/label.html',
             recipe=recipe,
-            final_texts=final_texts # 傳遞整合後的 final_texts
+            final_texts=final_texts
         )
 
+# --- 以下是其他 API 路由，保持不變 ---
 @bp.route('/ingredients', methods=['GET'])
 @login_required
 def manage_ingredients():
@@ -164,8 +182,8 @@ def get_ingredient(ingredient_id):
         'fat_g': ingredient.fat_g, 'saturated_fat_g': ingredient.saturated_fat_g,
         'trans_fat_g': ingredient.trans_fat_g, 'carbohydrate_g': ingredient.carbohydrate_g,
         'sugar_g': ingredient.sugar_g, 'sodium_mg': ingredient.sodium_mg,
-        'cost_per_unit': ingredient.cost_per_unit, # 新增
-        'unit_name': ingredient.unit_name # 新增
+        'cost_per_unit': ingredient.cost_per_unit,
+        'unit_name': ingredient.unit_name
     }
     return jsonify({'status': 'success', 'data': ingredient_data})
 
@@ -233,8 +251,8 @@ def search_ingredients():
                 'fat_g': ing.fat_g, 'carbohydrate_g': ing.carbohydrate_g,
                 'saturated_fat_g': ing.saturated_fat_g, 'trans_fat_g': ing.trans_fat_g,
                 'sugar_g': ing.sugar_g, 'sodium_mg': ing.sodium_mg,
-                'cost_per_unit': ing.cost_per_unit, # 新增
-                'unit_name': ing.unit_name # 新增
+                'cost_per_unit': ing.cost_per_unit,
+                'unit_name': ing.unit_name
                 } for ing in ingredients]
     return jsonify(results)
 
@@ -263,23 +281,11 @@ def save_recipe(recipe_id):
 @bp.route('/api/recipe/preview_label', methods=['POST'])
 @login_required
 def preview_label():
-    """
-    接收前端的即時食譜資料，回傳計算好的標籤文字 (JSON格式)。
-    此函式不會寫入資料庫，僅用於即時預覽。
-    """
     data = request.get_json()
     if not data:
         return jsonify({'status': 'error', 'message': '請求資料不完整'}), 400
 
     try:
-        # 1. 在記憶體中建立一個暫時的 Recipe 物件來存放前端資料
-        # 這裡我們需要一個類似 Recipe 的物件，但是是輕量的，不寫入db
-        # 或者，我們可以從前端直接傳遞 ingredient 的完整 details
-        # 這裡的實現方式是，RecipeItem 需要 Ingredient 對象。
-        # 所以需要從資料庫中撈取 Ingredient 對象
-        
-        # 為了避免不必要的資料庫操作，可以將 ingredient details 直接傳遞過來
-        # 或者像現在這樣，重新從資料庫加載
         temp_recipe = Recipe(
             recipe_name=data.get('recipe_name', '預覽食譜'),
             final_weight_g=float(data['final_weight_g']) if data.get('final_weight_g') else None,
@@ -287,22 +293,14 @@ def preview_label():
             label_options=data.get('label_options', {})
         )
         
-        # 因為 temp_recipe 是一個不在 session 的 transient object，
-        # 它的 `ingredients` 關係需要手動填充，且其中的 `ingredient` 屬性也需要是實際的 Ingredient 對象
-        # 而不是僅僅 ID
         for item_data in data.get('ingredients', []):
             ingredient = Ingredient.query.get(item_data['ingredient_id'])
             if ingredient and float(item_data['quantity_g']) > 0:
-                # 注意：RecipeItem 關係建立時需要正確的對象，而不是僅僅 ID
-                # 如果 RecipeItem 有一個 setter 可以接受 ID 則更簡單
-                # 這裡直接傳入 ingredient 對象
                 temp_recipe_item = RecipeItem(ingredient=ingredient, quantity_g=float(item_data['quantity_g']))
                 temp_recipe.ingredients.append(temp_recipe_item)
 
-        # 3. 呼叫您在模型中已有的計算方法，重複利用現有邏輯！
         raw_totals = temp_recipe.calculate_nutrition()
         
-        # 4. 執行與您 recipe_label 路由中完全相同的後續計算
         final_weight = temp_recipe.final_weight_g if temp_recipe.final_weight_g and temp_recipe.final_weight_g > 0 else raw_totals.get('total_weight_g', 0)
         servings_count = temp_recipe.servings_count if temp_recipe.servings_count > 0 else 1
         serving_weight = final_weight / servings_count if servings_count > 0 else 0
@@ -310,17 +308,15 @@ def preview_label():
         density = {}
         if final_weight > 0:
             for key, value in raw_totals.items():
-                if isinstance(value, (int, float)) and key != 'total_cost': # 排除 total_cost
+                if isinstance(value, (int, float)) and key != 'total_cost':
                     density[key] = value / final_weight
         
         per_serving = {key: val * serving_weight for key, val in density.items()}
         per_100g = {key: val * 100 for key, val in density.items()}
 
-        # 5. 格式化最終要顯示的文字字串
         ingredients_list_sorted = sorted(temp_recipe.ingredients, key=lambda item: item.quantity_g, reverse=True)
         ingredients_str = "、".join([item.ingredient.food_name for item in ingredients_list_sorted])
 
-        # 根據 label_options 篩選營養素並格式化
         label_options = temp_recipe.label_options or {}
         show_options = label_options.get('show_nutrients', {
             'calories_kcal': True, 'protein_g': True, 'fat_g': True,
