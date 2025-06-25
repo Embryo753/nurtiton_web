@@ -6,6 +6,60 @@ document.addEventListener('DOMContentLoaded', function() {
     const submitBtnText = document.getElementById('submit-btn-text');
     const submitSpinner = document.getElementById('submit-spinner');
 
+    // --- ★ 新增：自動完成功能的 DOM 元素 ---
+    const ingredientNameInput = document.getElementById('ingredient_name');
+    const searchResultsContainer = document.getElementById('ingredient-search-results');
+    let searchTimeout;
+
+    // --- ★ 新增：即時搜尋邏輯 ---
+    ingredientNameInput.addEventListener('input', function() {
+        // 清除上一次的計時器，避免在快速打字時發送過多請求
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+
+        // 如果輸入框是空的，就清空搜尋結果
+        if (query.length < 1) {
+            searchResultsContainer.innerHTML = '';
+            return;
+        }
+
+        // 設定一個延遲 (300毫秒)，在使用者停止打字後才發送請求
+        searchTimeout = setTimeout(() => {
+            fetch(`/pricing/api/search_all_ingredients?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    searchResultsContainer.innerHTML = ''; // 先清空舊結果
+                    if (data.length > 0) {
+                        data.forEach(item => {
+                            const resultItem = document.createElement('a');
+                            resultItem.href = '#';
+                            resultItem.className = 'list-group-item list-group-item-action';
+                            resultItem.textContent = item.name;
+                            
+                            // 當使用者點擊搜尋結果時
+                            resultItem.addEventListener('click', function(e) {
+                                e.preventDefault(); // 防止頁面跳轉
+                                ingredientNameInput.value = this.textContent; // 將點選的名稱填入輸入框
+                                searchResultsContainer.innerHTML = ''; // 清空並隱藏結果列表
+                            });
+                            searchResultsContainer.appendChild(resultItem);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error during ingredient search:', error));
+        }, 300); 
+    });
+
+    // 當使用者點擊頁面其他地方時，隱藏搜尋結果列表
+    document.addEventListener('click', function(e) {
+        if (!ingredientNameInput.contains(e.target)) {
+            searchResultsContainer.innerHTML = '';
+        }
+    });
+    // --- 即時搜尋邏輯結束 ---
+
+
+    // --- 原有的表單提交邏輯 (保持不變) ---
     function showLoadingState(isLoading) {
         if (isLoading) {
             submitBtn.disabled = true;
@@ -19,11 +73,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displayFormErrors(errors) {
-        // 清除所有舊的錯誤訊息和無效狀態
         document.querySelectorAll('.form-control.is-invalid, .form-select.is-invalid').forEach(el => el.classList.remove('is-invalid'));
         document.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
 
-        // 顯示新的錯誤訊息
         for (const fieldName in errors) {
             const inputElement = document.getElementById(fieldName);
             if (inputElement) {
@@ -36,7 +88,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 監聽所有表單輸入變化，實時清除錯誤
     form.querySelectorAll('.form-control, .form-select').forEach(input => {
         input.addEventListener('input', function() {
             if (this.classList.contains('is-invalid')) {
@@ -49,12 +100,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 處理表單提交
     form.addEventListener('submit', function(event) {
-        event.preventDefault(); // 阻止默認的表單提交行為
-        
-        showLoadingState(true); // 顯示載入狀態
-        displayFormErrors({}); // 清除所有錯誤
+        event.preventDefault();
+        showLoadingState(true);
+        displayFormErrors({});
 
         const formData = {
             ingredient_name: document.getElementById('ingredient_name').value,
@@ -62,7 +111,6 @@ document.addEventListener('DOMContentLoaded', function() {
             price: document.getElementById('price').value,
             quantity: document.getElementById('quantity').value,
             unit: document.getElementById('unit').value,
-            // CSRF Token for Flask-WTF
             csrf_token: document.querySelector('input[name="csrf_token"]').value
         };
 
@@ -75,7 +123,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.status === 'success') {
                 alert(data.message);
-                // --- 修改處：使用後端回傳的 URL 進行跳轉 ---
                 window.location.href = data.redirect_url;
             } else {
                 alert('新增價格紀錄失敗: ' + (data.message || '請檢查表單欄位。'));

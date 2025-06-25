@@ -1,14 +1,59 @@
-{# app/templates/pricing/edit_price.html #} {% extends "base.html" %} {% block content %}
-{{ title }}
-返回價格紀錄列表
+{# app/templates/pricing/add_price.html #}
+{% extends "base.html" %}
 
-編輯價格紀錄
-{# 使用 form.action 來動態設定提交的 URL #}
-{{ form.hidden_tag() }}
-{{ form.ingredient_name.label(class="form-label") }} {# 讓食材名稱不可編輯，防止意外創建新食材 #} {{ form.ingredient_name(class="form-control", readonly=True) }}
-{{ form.source.label(class="form-label") }} {{ form.source(class="form-select") }}
-{{ form.price.label(class="form-label") }} {{ form.price(class="form-control", min="0.01", step="0.01") }}
-{{ form.quantity.label(class="form-label") }} {{ form.quantity(class="form-control", min="0.001", step="0.001") }}
-{{ form.unit.label(class="form-label") }} {{ form.unit(class="form-control") }}
-儲存修改
-{# --- 修改處：修正語法錯誤並引入正確的 JS 檔案 --- #} {% block scripts %} {% endblock scripts %} {% endblock %}
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">{{ title }}</h1>
+    <p class="mb-4"><a href="{{ url_for('pricing.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-2"></i>返回價格紀錄列表</a></p>
+
+    <div class="card p-4 shadow-sm">
+        <h4 class="card-title text-primary mb-3">新增價格紀錄</h4>
+        <form id="price-form" action="{{ url_for('pricing.add_price') }}" method="POST" novalidate>
+            {{ form.hidden_tag() }}
+            
+            {# --- ★ 修改處：為食材名稱欄位加上即時搜尋結構 --- #}
+            <div class="mb-3 position-relative">
+                {{ form.ingredient_name.label(class="form-label") }}
+                {# 加上 autocomplete="off" 防止瀏覽器預設的建議列表干擾 #}
+                {{ form.ingredient_name(class="form-control", placeholder="輸入關鍵字搜尋或建立新食材", autocomplete="off") }}
+                {# 這個 div 用於顯示即時搜尋的結果列表 #}
+                <div id="ingredient-search-results" class="list-group position-absolute w-100 mt-1" style="z-index: 1000;">
+                    <!-- Search results will be injected here by JavaScript -->
+                </div>
+                <div class="invalid-feedback" id="error-ingredient_name"></div>
+            </div>
+            {# --- 修改結束 --- #}
+
+            <div class="mb-3">
+                {{ form.source.label(class="form-label") }}
+                {{ form.source(class="form-select") }}
+                <div class="invalid-feedback" id="error-source"></div>
+            </div>
+            <div class="mb-3">
+                {{ form.price.label(class="form-label") }}
+                {{ form.price(class="form-control", min="0.01", step="0.01") }}
+                <div class="invalid-feedback" id="error-price"></div>
+            </div>
+            <div class="mb-3">
+                {{ form.quantity.label(class="form-label") }}
+                {{ form.quantity(class="form-control", min="0.001", step="0.001") }}
+                <div class="invalid-feedback" id="error-quantity"></div>
+            </div>
+            <div class="mb-4">
+                {{ form.unit.label(class="form-label") }}
+                {{ form.unit(class="form-control", placeholder="例如: g, ml, 個, 包") }}
+                <div class="invalid-feedback" id="error-unit"></div>
+            </div>
+            <button type="submit" class="btn btn-success btn-lg w-100" id="submit-btn">
+                <span id="submit-btn-text"><i class="bi bi-plus-lg me-2"></i>新增紀錄</span>
+                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="submit-spinner"></span>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{# 引入對應的 JavaScript 檔案 #}
+<script src="{{ url_for('static', filename='js/add_price.js') }}"></script>
+{% endblock scripts %}
